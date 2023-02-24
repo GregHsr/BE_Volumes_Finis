@@ -1,1 +1,6 @@
-/VTSWriter.f90
+m_type.mod
+prog.exe
+prog.o
+subroutines.o
+VTSWriter.o
+m_type.o

@@ -4,7 +4,7 @@ OPT = -g -O0 -fbounds-check
 # Sans option de debuggage
 #OPT = -g
 
-OBJ = m_type.o main.o subroutines.o VTSWriter.o
+OBJ = m_type.o prog.o subroutines.o VTSWriter.o
 EXE = prog.exe
 
 prog:	$(OBJ)
@@ -13,8 +13,8 @@ prog:	$(OBJ)
 m_type.o:	m_type.f90
 	$(FC) $(OPT) m_type.f90 -c	
 
-main.o :	main.f90
-	$(FC) $(OPT) main.f90 -c
+prog.o :	prog.f90
+	$(FC) $(OPT) prog.f90 -c
 
 subroutines.o :	subroutines.f90
 	$(FC) $(OPT) subroutines.f90 -c
