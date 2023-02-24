@@ -143,16 +143,35 @@ end subroutine Petits_Delta
 
 ! Calcul du maillage centre
 
+subroutine maillage_centre(dm, M_centre, N)
+    Implicit none
+
+    Integer,intent(in)::N
+    Real, dimension(N+1), intent(in) :: dm
+
+    Real, dimension(N), intent(out) :: M_centre
+
+    integer :: i
+
+    M_centre(1)=dm(1)
+    do i=2,N
+       M_centre(i)=M_centre(i-1)+dm(i)
+    end do
+
+end subroutine maillage_centre
+
 
 ! Calcul des vitesses
 
-subroutine Vitesse(alpha, beta, L, N_x, N_y, X, Y, U, V)
+subroutine Vitesse(alpha, beta, L, N_x, N_y, X_n, Y_n, X_c, Y_c, U, V)
     Implicit None
 
     Integer, intent(in) :: beta, N_x, N_y
     Real, intent(in) :: alpha, L
-    Real, dimension(N_x+1), intent(in) :: X
-    Real, dimension(N_y+1), intent(in) :: Y
+    Real, dimension(N_x+1), intent(in) :: X_n
+    Real, dimension(N_y+1), intent(in) :: Y_n
+    Real, dimension(N_x), intent(in) :: X_c
+    Real, dimension(N_y), intent(in) :: Y_c
 
     Real, dimension(N_x+1,N_y), intent(out) :: U
     Real, dimension(N_x,N_y+1), intent(out) :: V
@@ -161,13 +180,13 @@ subroutine Vitesse(alpha, beta, L, N_x, N_y, X, Y, U, V)
 
     do i=1,N_x+1
         do j=1,N_y
-            U(i,j)=alpha*sin(acos(-1.)*((X(i)/L)-(beta/2)))*cos(acos(-1.)*((Y(j)/L)-(beta/2)))
+            U(i,j)=alpha*sin(acos(-1.)*((X_n(i)/L)-(beta/2)))*cos(acos(-1.)*((Y_c(j)/L)-(beta/2)))
         end do
     end do
 
     do i=1,N_x
         do j=1,N_y+1
-            V(i,j)=-alpha*cos(acos(-1.)*((X(i)/L)-(beta/2)))*sin(acos(-1.)*((Y(j)/L)-(beta/2)))
+            V(i,j)=-alpha*cos(acos(-1.)*((X_c(i)/L)-(beta/2)))*sin(acos(-1.)*((Y_n(j)/L)-(beta/2)))
         end do
     end do
     
@@ -204,3 +223,168 @@ function delta_t(D, R, CFL, U, V, N_x,N_y, Tf, Delta_x, Delta_y)
     end if
 
 end function delta_t
+
+! Définition de la matrice de concentration initiale
+
+subroutine C_initiale(C0,C_init, N_x, N_y)
+    Implicit none
+
+    Integer, intent(in) :: N_x, N_y
+    Real, intent(in) :: C0
+    Real, dimension(N_x,N_y), intent(out) :: C_init
+    
+    integer :: i, j
+
+    do i = 1, N_x 
+        do j = 1, N_y
+            C_init(i,j) = C0
+        end do
+    end do
+
+end subroutine C_initiale
+
+! Calcul des flux advectifs
+
+subroutine F_adv(U, V, C, F_as, F_ao, F_an, F_ae, N_x, N_y, Delta_x, Delta_y, C1, C0)
+    Implicit None
+
+    Integer, intent(in) :: N_x, N_y
+    real, intent(in) :: C1, C0
+    Real, dimension(N_x+1,N_y), intent(in) :: U
+    Real, dimension(N_x,N_y+1), intent(in) :: V
+    real, dimension(N_x,N_y), intent(in) :: C
+    real, dimension(N_x), intent(in) :: Delta_x
+    real, dimension(N_y), intent(in) :: Delta_y
+
+    Real, dimension(N_x,N_y), intent(out) :: F_as, F_ao, F_an, F_ae
+
+    Integer :: is, js, io, jo, in, jn, ie, je
+
+    ! Calcul du flux advectif sud
+    F_as(:,1) = C1        ! Condition limite
+
+    do is=1, N_x
+        do js=2, N_y
+            if (V(is,js) > 0) then
+                F_as(is,js) = -V(is,js)*C(is,js-1)*Delta_x(is)
+            else
+                F_as(is,js) = -V(is,js)*C(is,js)*Delta_x(is)
+            end if
+        end do
+    end do
+
+! Calcul du flux advectif ouest
+    
+    do io=2, N_x            ! Pas de conditions limites indiquées
+        do jo=1, N_y
+            if (U(io,jo) > 0) then
+                F_ao(io,jo) = -U(io-1,jo)*C(io,jo)*Delta_y(jo)
+            else
+                F_ao(io,jo) = -U(io,jo)*C(io,jo)*Delta_y(jo)
+            end if
+        end do
+    end do
+
+        ! Calcul du flux advectif nord
+    F_an(:,N_y) = C0    ! Condition limite
+
+    do in=1, N_x
+        do jn=1, N_y-1
+            if (V(in,jn+1) > 0) then
+                F_an(in,jn) = V(in,jn+1)*C(in,jn)*Delta_x(in)
+            else
+                F_an(in,jn) = V(in,jn+1)*C(in,jn+1)*Delta_x(in)
+            end if
+        end do
+    end do
+
+    ! Calcul du flux advectif est
+    
+    do ie=1, N_x-1            ! Pas de conditions limites indiquées
+        do je=1, N_y
+            if (U(ie,je) > 0) then
+                F_ae(ie,je) = U(ie+1,je)*C(ie,je)*Delta_y(je)
+            else
+                F_ae(ie,je) = U(ie+1,je)*C(ie+1,je)*Delta_y(je)
+            end if
+        end do
+    end do
+
+end subroutine F_adv
+
+! Calcul des flux diffusifs
+
+subroutine F_diff(D, C, F_ds, F_do, F_dn, F_de, N_x, N_y, Delta_x, Delta_y, dx, dy, beta, C0, C1)
+    Implicit None
+
+    Integer, intent(in) :: N_x, N_y, beta
+    Real, intent(in) :: D, C0, C1
+    Real, dimension(N_x,N_y), intent(in) :: C
+    real, dimension(N_x), intent(in) :: Delta_x
+    real, dimension(N_y), intent(in) :: Delta_y
+    real, dimension(N_x+1), intent(in) :: dx
+    real, dimension(N_y+1), intent(in) :: dy    
+
+    Real, dimension(N_x,N_y), intent(out) :: F_ds, F_do, F_dn, F_de
+
+    Integer :: is, js, io, jo, jol, in, jn, ie, je, jel
+
+    ! Calcul du flux diffusif sud
+
+    do is=1, N_x
+        F_ds(is,1)= -D*2*Delta_x(is)*(C(is,1)-C1)/Delta_y(1)   ! Condition limite
+        do js=2, N_y
+            F_ds(is,js) = -D*Delta_x(is)*(C(is,js)-C(is,js-1))/dy(js-1)
+        end do
+    end do
+
+    ! Calcul du flux diffusif nord
+
+    do in=1, N_x
+        F_dn(in,N_y)= D*2*Delta_x(in)*(C0-C(in,N_y))/Delta_y(N_y)   ! Condition limite
+        do jn=1, N_y-1
+            F_ds(in,jn) = D*Delta_x(in)*(C(in,jn+1)-C(in,jn))/dy(jn)
+        end do
+    end do
+
+    ! Calcul du flux diffusif ouest
+
+        ! Condition Limite
+
+    if (beta==0) then
+        F_do(1,:) = 0
+    else
+        do jol=1, N_y
+            F_do(1,jol)=-D*Delta_y(jol)*(C(2,jol)-C(1,jol))/dx(1)  
+        end do
+    end if
+
+        ! Calcul
+    
+    do io=2, N_x
+        do jo=1, N_y
+            F_do(io,jo) = -D*Delta_y(jo)*(C(io,jo)-C(io-1,jo))/dx(io)
+        end do
+    end do
+
+    ! Calcul du flux diffusif est
+
+        ! Condition Limite
+
+    if (beta==0) then
+        F_de(N_x,:) = 0
+    else
+        do jel=1, N_y
+            F_de(N_x,jel)=D*Delta_y(jel)*(C(N_x,jel)-C(N_x-1,jel))/dx(N_x)  
+        end do
+    end if
+
+        ! Calcul
+    
+    do ie=1, N_x-1
+        do je=1, N_y
+            F_de(ie,je) = D*Delta_y(je)*(C(ie+1,je)-C(ie,je))/dx(ie)
+        end do
+    end do
+
+end subroutine F_diff

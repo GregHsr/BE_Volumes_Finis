@@ -4,3 +4,6 @@ prog.o
 subroutines.o
 VTSWriter.o
 m_type.o
+sol_983698064.vts
+sol_983698252.vts
+sol.pvd
