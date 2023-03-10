@@ -71,34 +71,36 @@ end subroutine M_maill_irreg
 
 ! Définition des matrices de maillage comme répétition du vecteur pour VTSWriter
     !  Multiplication des abcisses N_y +1 fois
-subroutine Matrice_x(N_x, N_y, M_x)
+subroutine Matrice_x(N_x, N_y, M_x, X_reg)
     Implicit None
 
     Integer,intent(in)::N_x, N_y
     Real,dimension(N_x+1,N_y+1),intent(out)::M_x
+    Real, dimension(N_x+1), intent(in) :: X_reg
 
     Integer::i, j
 
     do i=1,N_x+1
         do j=1,N_y+1
-            M_x(i,j)=M_x(i,1)
+            M_x(i,j)= X_reg(i)
         end do
     end do
 
 end subroutine Matrice_x
 
     ! Multiplication des ordonnées N_x +1 fois
-subroutine Matrice_y(N_x, N_y, M_y)
+subroutine Matrice_y(N_x, N_y, M_y, Y_irreg)
     Implicit None
 
     Integer,intent(in)::N_x, N_y
     Real,dimension(N_x+1,N_y+1),intent(out)::M_y
+    Real, dimension(N_y+1), intent(in) :: Y_irreg
 
     Integer::i, j
 
     do i=1,N_x+1
         do j=1,N_y+1
-            M_y(i,j)=M_y(1,j)
+            M_y(i,j)= Y_irreg(j)
         end do
     end do
 
@@ -226,11 +228,11 @@ end function delta_t
 
 ! Définition de la matrice de concentration initiale
 
-subroutine C_initiale(C0,C_init, N_x, N_y)
+subroutine C_initiale(C0,C1,C_init, N_x, N_y)
     Implicit none
 
     Integer, intent(in) :: N_x, N_y
-    Real, intent(in) :: C0
+    Real, intent(in) :: C0,C1
     Real, dimension(N_x,N_y), intent(out) :: C_init
     
     integer :: i, j
@@ -261,7 +263,7 @@ subroutine F_adv(U, V, C, F_as, F_ao, F_an, F_ae, N_x, N_y, Delta_x, Delta_y, C1
     Integer :: is, js, io, jo, in, jn, ie, je
 
     ! Calcul du flux advectif sud
-    F_as(:,1) = C1        ! Condition limite
+    F_as(:,1) = -V(:,1)*C1*Delta_x(:)        ! Condition limite
 
     do is=1, N_x
         do js=2, N_y
@@ -278,7 +280,7 @@ subroutine F_adv(U, V, C, F_as, F_ao, F_an, F_ae, N_x, N_y, Delta_x, Delta_y, C1
     do io=2, N_x            ! Pas de conditions limites indiquées
         do jo=1, N_y
             if (U(io,jo) > 0) then
-                F_ao(io,jo) = -U(io-1,jo)*C(io,jo)*Delta_y(jo)
+                F_ao(io,jo) = -U(io,jo)*C(io-1,jo)*Delta_y(jo)
             else
                 F_ao(io,jo) = -U(io,jo)*C(io,jo)*Delta_y(jo)
             end if
@@ -286,7 +288,7 @@ subroutine F_adv(U, V, C, F_as, F_ao, F_an, F_ae, N_x, N_y, Delta_x, Delta_y, C1
     end do
 
         ! Calcul du flux advectif nord
-    F_an(:,N_y) = C0    ! Condition limite
+    F_an(:,N_y) = V(:,N_y+1)*C0*Delta_x(:)    ! Condition limite
 
     do in=1, N_x
         do jn=1, N_y-1
@@ -343,7 +345,7 @@ subroutine F_diff(D, C, F_ds, F_do, F_dn, F_de, N_x, N_y, Delta_x, Delta_y, dx, 
     do in=1, N_x
         F_dn(in,N_y)= D*2*Delta_x(in)*(C0-C(in,N_y))/Delta_y(N_y)   ! Condition limite
         do jn=1, N_y-1
-            F_ds(in,jn) = D*Delta_x(in)*(C(in,jn+1)-C(in,jn))/dy(jn)
+            F_dn(in,jn) = D*Delta_x(in)*(C(in,jn+1)-C(in,jn))/dy(jn)
         end do
     end do
 
@@ -363,7 +365,7 @@ subroutine F_diff(D, C, F_ds, F_do, F_dn, F_de, N_x, N_y, Delta_x, Delta_y, dx, 
     
     do io=2, N_x
         do jo=1, N_y
-            F_do(io,jo) = -D*Delta_y(jo)*(C(io,jo)-C(io-1,jo))/dx(io)
+            F_do(io,jo) = -D*Delta_y(jo)*(C(io,jo)-C(io-1,jo))/dx(io-1)
         end do
     end do
 
@@ -386,5 +388,29 @@ subroutine F_diff(D, C, F_ds, F_do, F_dn, F_de, N_x, N_y, Delta_x, Delta_y, dx, 
             F_de(ie,je) = D*Delta_y(je)*(C(ie+1,je)-C(ie,je))/dx(ie)
         end do
     end do
-
+    
 end subroutine F_diff
+
+! Calcul de la concentration
+
+subroutine C_new(C_next, C_old, F_as, F_ao, F_an, F_ae, F_ds, F_do, F_dn, F_de, N_x, N_y, Delta_x, Delta_y, dt)
+    Implicit None
+
+    Integer, intent(in) :: N_x, N_y
+    Real, intent(in) :: dt
+    Real, dimension(N_x,N_y), intent(in) :: F_as, F_ao, F_an, F_ae, F_ds, F_do, F_dn, F_de
+    Real, dimension(N_x,N_y), intent(in) :: C_old
+    Real, dimension(N_x,N_y), intent(out) :: C_next
+    Real, dimension(N_x), intent(in) :: Delta_x
+    Real, dimension(N_y), intent(in) :: Delta_y
+
+    Integer :: i, j
+
+    do i=1, N_x
+        do j=1, N_y
+            C_next(i,j) = C_old(i,j) - dt*(F_as(i,j) + F_ao(i,j) + F_an(i,j) + F_ae(i,j)& 
+            + F_ds(i,j) + F_do(i,j) + F_dn(i,j) + F_de(i,j))/(Delta_x(i)*Delta_y(j))
+        end do
+    end do
+
+end subroutine C_new

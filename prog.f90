@@ -6,8 +6,9 @@ program BE
     type (phys):: data_phys
     type (num):: data_num
     real, dimension(:), allocatable :: X_reg, Y_reg, Y_irreg, delta_x, delta_y, dx, dy, X_centre, Y_centre
-    real, dimension(:,:), allocatable :: U, V, Mx, My, C_init, F_as, F_ao, F_an, F_ae, F_ds, F_do, F_dn, F_de
+    real, dimension(:,:), allocatable :: U, V, Mx, My, C_init, F_as, F_ao, F_an, F_ae, F_ds, F_do, F_dn, F_de, C_next, C_old
     real :: dt, delta_t
+    integer :: i_temps
 
     call read_data("data.txt", data_phys, data_num)
  
@@ -49,27 +50,28 @@ program BE
     allocate(U(data_num%N_x+1, data_num%N_y))
     allocate(V(data_num%N_x, data_num%N_y+1))
 
-    call Vitesse(data_phys%alpha, data_phys%beta, data_phys%L, data_num%N_x, data_num%N_y, X_reg, Y_irreg, X_centre, Y_centre, U, V)
+    call U_verifA(data_phys%alpha, data_phys%beta, data_phys%L,&
+     data_num%N_x, data_num%N_y, X_reg, Y_irreg, X_centre, Y_centre, U, V)
     
     ! Calcul de delta_t
     dt = delta_t(data_phys%D, data_num%R, data_num%CFL, U, V, data_num%N_x, data_num%N_y, data_phys%Tf, Delta_x, Delta_y)
-    write(*,*) "dt = ", dt
-
+    dt = 1.
     ! Utilisation VTSWriter
         !Création des matrices de coordonnées
     allocate(Mx(data_num%N_x+1, data_num%N_y+1))
     allocate(My(data_num%N_x+1, data_num%N_y+1))
 
-    call Matrice_x(data_num%N_x, data_num%N_y, Mx)
-    call Matrice_y(data_num%N_x, data_num%N_y, My)
+    call Matrice_x(data_num%N_x, data_num%N_y, Mx, X_reg)
+    call Matrice_y(data_num%N_x, data_num%N_y, My, Y_irreg)
 
         ! Création du tableau de concentration initiale de taille N_x * N_y
     allocate(C_init(data_num%N_x, data_num%N_y))
-    call C_initiale(data_phys%C0, C_init, data_num%N_x, data_num%N_y)
+    
+    call C_init_verifA(data_phys%C0, data_phys%C1, C_init, data_num%N_x, data_num%N_y)
 
         ! Ecriture des fichiers VTS
 
-    call VTSWriter(data_phys%Tf,dt,data_num%N_x+1,data_num%N_y+1,Mx, My, C_init, U, V, "ini")
+    call VTSWriter(0,0,data_num%N_x+1,data_num%N_y+1,Mx, My, C_init, U, V, "ini")
 
     ! Calcul du flux advectif 
     allocate(F_as(data_num%N_x, data_num%N_y))
@@ -77,17 +79,42 @@ program BE
     allocate(F_an(data_num%N_x, data_num%N_y))
     allocate(F_ae(data_num%N_x, data_num%N_y))
 
-    call F_adv(U, V, C_init, F_as, F_ao, F_an, F_ae, data_num%N_x, data_num%N_y, delta_x, delta_y, data_phys%C1, data_phys%C0)
-    write(*,*) "F_as = ", F_as
-
-    ! Calcul du flux diffusif
+    ! Allocate les flux diffusif
     allocate(F_ds(data_num%N_x, data_num%N_y))
     allocate(F_do(data_num%N_x, data_num%N_y))
     allocate(F_dn(data_num%N_x, data_num%N_y))
     allocate(F_de(data_num%N_x, data_num%N_y))
 
-    call F_diff(data_phys%D, C_init, F_ds, F_do, F_dn, F_de, data_num%N_x, data_num%N_y, delta_x, delta_y, dx, dy, &
+    
+ 
+    ! Allocation de la concentration à l'instant suivant
+    
+    allocate (C_next(data_num%N_x, data_num%N_y))
+    allocate (C_old(data_num%N_x, data_num%N_y))
+
+    C_old = C_init
+    
+    ! itération
+    do i_temps = 1, 10
+
+        ! Calcul flux advectif
+        call F_adv(U, V, C_old, F_as, F_ao, F_an, F_ae, data_num%N_x, data_num%N_y, delta_x, delta_y, data_phys%C1, data_phys%C0)
+
+        ! Calcul flux diffusif
+        call F_diff(data_phys%D, C_old, F_ds, F_do, F_dn, F_de, data_num%N_x, data_num%N_y, delta_x, delta_y, dx, dy, &
                 data_phys%beta, data_phys%C0, data_phys%C1)
+        
+        ! Calcul de la concentration
+        call C_new(C_next, C_old, F_as, F_ao, F_an, F_ae, F_ds, F_do, F_dn, F_de, data_num%N_x, data_num%N_y, delta_x, delta_y, dt)
+        
+        ! Création du fichier
+        call VTSWriter(i_temps*dt,i_temps,data_num%N_x+1,data_num%N_y+1,Mx, My, C_next, U, V, "int")
+        
+        C_old = C_next
+    end do
+
+    call VTSWriter(11*dt,11,data_num%N_x+1,data_num%N_y+1,Mx, My, C_next, U, V, "end")
+
     ! Libération de la mémoire
     deallocate(X_reg)
     deallocate(Y_reg)
@@ -109,5 +136,8 @@ program BE
     deallocate(F_do)
     deallocate(F_dn)
     deallocate(F_de)
+    deallocate(C_next)
+    deallocate(C_old)
+
 end program BE
 
