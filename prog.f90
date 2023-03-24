@@ -7,7 +7,7 @@ program BE
     type (num):: data_num
     real, dimension(:), allocatable :: X_reg, Y_reg, Y_irreg, delta_x, delta_y, dx, dy, X_centre, Y_centre
     real, dimension(:,:), allocatable :: U, V, Mx, My, C_init, F_as, F_ao, F_an, F_ae, F_ds, F_do, F_dn, F_de, C_next, C_old
-    real :: dt, delta_t
+    real :: dt
     integer :: i_temps
 
     call read_data("data.txt", data_phys, data_num)
@@ -54,8 +54,8 @@ program BE
      data_num%N_x, data_num%N_y, X_reg, Y_irreg, X_centre, Y_centre, U, V)
     
     ! Calcul de delta_t
-    dt = delta_t(data_phys%D, data_num%R, data_num%CFL, U, V, data_num%N_x, data_num%N_y, data_phys%Tf, Delta_x, Delta_y)
-    dt = 1.
+    call delta_t(dt, data_phys%D, data_num%R, data_num%CFL, U, V, data_num%N_x, data_num%N_y, data_phys%Tf, Delta_x, Delta_y)
+    write(*,*) "dt = ", dt
     ! Utilisation VTSWriter
         !Création des matrices de coordonnées
     allocate(Mx(data_num%N_x+1, data_num%N_y+1))
@@ -95,7 +95,7 @@ program BE
     C_old = C_init
     
     ! itération
-    do i_temps = 1, 10
+    do i_temps = 1, 50
 
         ! Calcul flux advectif
         call F_adv(U, V, C_old, F_as, F_ao, F_an, F_ae, data_num%N_x, data_num%N_y, delta_x, delta_y, data_phys%C1, data_phys%C0)
@@ -113,7 +113,7 @@ program BE
         C_old = C_next
     end do
 
-    call VTSWriter(11*dt,11,data_num%N_x+1,data_num%N_y+1,Mx, My, C_next, U, V, "end")
+    call VTSWriter(51*dt,51,data_num%N_x+1,data_num%N_y+1,Mx, My, C_next, U, V, "end")
 
     ! Libération de la mémoire
     deallocate(X_reg)

@@ -196,35 +196,40 @@ end subroutine Vitesse
 
 ! Calcul du pas de temps
 
-function delta_t(D, R, CFL, U, V, N_x,N_y, Tf, Delta_x, Delta_y)
+subroutine delta_t(dt ,D, R, CFL, U, V, N_x,N_y, Tf, Delta_x, Delta_y)
     Implicit None
 
-    Real :: D, R, CFL, delta_t, u_int, v_int, delta_int, Tf
-    Integer :: N_x, N_y, i ,j
-    Real, dimension(N_x+1,N_y+1) :: U, V
-    Real, dimension(N_x) :: Delta_x
-    Real, dimension(N_y) :: Delta_y
+    Real, intent(in) :: D, R, CFL, Tf
+    Integer, intent(in) :: N_x, N_y
+    Real, dimension(N_x+1,N_y+1), intent(in) :: U, V
+    Real, dimension(N_x), intent(in) :: Delta_x
+    Real, dimension(N_y), intent(in) :: Delta_y
 
-    delta_t = Tf
+    real, intent(out) :: dt
+
+    Real :: u_int, v_int, delta_int
+    integer :: i, j
+
+    dt = Tf
 
     do i=1,N_x
         do j = 1,N_y
             u_int = abs((U(i,j)+U(i+1,j))/2)
             v_int = abs((V(i,j)+V(i,j+1))/2)
             delta_int=1/((u_int/(CFL*Delta_x(i)))+(v_int/(CFL*Delta_y(j)))+(D/(R*Delta_x(i)**2))+(D/(R*Delta_y(j)**2)))
-            
-            if (delta_int < delta_t) then
-                delta_t = delta_int
+
+            if (delta_int < dt) then
+                dt = delta_int
             end if
 
         end do
     end do
 
-    if (delta_t == Tf) then
+    if (dt > Tf) then
         write(*,*) "Pas de temps trop grand"
     end if
-
-end function delta_t
+    write(*,*) "Pas de temps : ", dt
+end subroutine delta_t
 
 ! Définition de la matrice de concentration initiale
 
@@ -274,9 +279,9 @@ subroutine F_adv(U, V, C, F_as, F_ao, F_an, F_ae, N_x, N_y, Delta_x, Delta_y, C1
             end if
         end do
     end do
-
-! Calcul du flux advectif ouest
     
+    ! Calcul du flux advectif ouest
+    F_ao(1,:) = 0.0                                ! Condition limite
     do io=2, N_x            ! Pas de conditions limites indiquées
         do jo=1, N_y
             if (U(io,jo) > 0) then
@@ -299,9 +304,10 @@ subroutine F_adv(U, V, C, F_as, F_ao, F_an, F_ae, N_x, N_y, Delta_x, Delta_y, C1
             end if
         end do
     end do
-
+    
     ! Calcul du flux advectif est
     
+    F_ae(N_x,:) = 0.0                          ! Condition limite
     do ie=1, N_x-1            ! Pas de conditions limites indiquées
         do je=1, N_y
             if (U(ie,je) > 0) then
@@ -408,8 +414,11 @@ subroutine C_new(C_next, C_old, F_as, F_ao, F_an, F_ae, F_ds, F_do, F_dn, F_de, 
 
     do i=1, N_x
         do j=1, N_y
+            ! C_next(i,j) = C_old(i,j) - dt*(F_as(i,j) + F_ao(i,j) + F_an(i,j) + F_ae(i,j)& 
+            ! + F_ds(i,j) + F_do(i,j) + F_dn(i,j) + F_de(i,j))/(Delta_x(i)*Delta_y(j))
+
             C_next(i,j) = C_old(i,j) - dt*(F_as(i,j) + F_ao(i,j) + F_an(i,j) + F_ae(i,j)& 
-            + F_ds(i,j) + F_do(i,j) + F_dn(i,j) + F_de(i,j))/(Delta_x(i)*Delta_y(j))
+            )/(Delta_x(i)*Delta_y(j))
         end do
     end do
 
