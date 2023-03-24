@@ -10,8 +10,8 @@
 
  # Numerical parameters 
 
- 20       ! N_x : number of cells in x-direction PRENDRE UN NOMBRE PAIR
- 20       ! N_y : number of cells in y-direction PRENDRE UN NOMBRE PAIR
-0 ! -1       ! gamma : -1 en I, 1 en X
+ 50      ! N_x : number of cells in x-direction PRENDRE UN NOMBRE PAIR
+ 50       ! N_y : number of cells in y-direction PRENDRE UN NOMBRE PAIR
+-1       ! gamma : -1 en I, 1 en X, 0 maillage régulier
 0.3       ! R : Fourier number
-0.5      ! CFL : Courant–Friedrichs–Lewy number
+0.3      ! CFL : Courant–Friedrichs–Lewy number

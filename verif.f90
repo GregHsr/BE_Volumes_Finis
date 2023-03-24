@@ -9,14 +9,14 @@ subroutine C_init_verifA(C0, C1, C_init, N_x, N_y)
     
     integer :: i, j
 
-    do i = 1, N_x/2 
-        do j = 1, N_y
-            C_init(i,j) = C1
+    do i = 1, N_x 
+        do j = 1, N_y/2
+            C_init(i,j) = C0
         end do
     end do
 
-    do i = N_x/2 + 1, N_x 
-        do j = 1, N_y
+    do i = 1, N_x 
+        do j = N_y/2 + 1, N_y
             C_init(i,j) = C0
         end do
     end do
@@ -42,13 +42,13 @@ subroutine U_verifA(alpha, beta, L, N_x, N_y, X_n, Y_n, X_c, Y_c, U, V)
 
     do i=1,N_x+1
         do j=1,N_y
-            U(i,j)=alpha
+            U(i,j)=0
         end do
     end do
 
     do i=1,N_x
         do j=1,N_y+1
-            V(i,j)=0
+            V(i,j)=alpha
         end do
     end do
     

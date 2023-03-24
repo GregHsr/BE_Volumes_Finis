@@ -54,10 +54,10 @@ subroutine VTSWriter(Time,Step,nx,ny,x,y,T,U,V,opt)
      write(8,formatperso) (x(i,j),y(i,j),0.,i=1,nx)
   END DO
   write(8,'(a)') '</Points>'
-  write(8,'(a)') '<CellData Scalars="Température, U, V">'
+  write(8,'(a)') '<CellData Scalars="Concentration, U, V">'
 
   ! Ecriture du scalaire (temperature / concentration)
-  write(8,'(a)') '<DataArray type="Float32" Name="Temp, K"/>'
+  write(8,'(a)') '<DataArray type="Float32" Name="Conc, None"/>'
   write(num2char,*) (nx-1)*(ny-1)
   DO j=1,ny-1
      write(8,formatperso) (T(i,j),i=1,nx-1)

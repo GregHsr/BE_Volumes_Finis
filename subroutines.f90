@@ -214,9 +214,12 @@ subroutine delta_t(dt ,D, R, CFL, U, V, N_x,N_y, Tf, Delta_x, Delta_y)
 
     do i=1,N_x
         do j = 1,N_y
-            u_int = abs((U(i,j)+U(i+1,j))/2)
-            v_int = abs((V(i,j)+V(i,j+1))/2)
-            delta_int=1/((u_int/(CFL*Delta_x(i)))+(v_int/(CFL*Delta_y(j)))+(D/(R*Delta_x(i)**2))+(D/(R*Delta_y(j)**2)))
+            !u_int = abs((U(i,j)+U(i+1,j))/2)          tentative de calcul de la vitesse au centre des cases
+            !v_int = abs((V(i,j)+V(i,j+1))/2)
+            !delta_int=1/((u_int/(CFL*Delta_x(i)))+(v_int/(CFL*Delta_y(j)))+(D/(R*Delta_x(i)**2))+(D/(R*Delta_y(j)**2)))
+
+            delta_int = 1/(abs(U(i,j))/(CFL*Delta_x(i))+(abs(V(i,j)))/(CFL*Delta_y(j))+(D/(R*Delta_x(i)**2))+&
+            (D/(R*Delta_y(j)**2)))
 
             if (delta_int < dt) then
                 dt = delta_int
@@ -228,6 +231,11 @@ subroutine delta_t(dt ,D, R, CFL, U, V, N_x,N_y, Tf, Delta_x, Delta_y)
     if (dt > Tf) then
         write(*,*) "Pas de temps trop grand"
     end if
+
+    if (dt < 0.0001) then
+        write(*,*) "Pas de temps trop petit"
+    end if
+
     write(*,*) "Pas de temps : ", dt
 end subroutine delta_t
 
