@@ -201,7 +201,8 @@ subroutine delta_t(dt ,D, R, CFL, U, V, N_x,N_y, Tf, Delta_x, Delta_y)
 
     Real, intent(in) :: D, R, CFL, Tf
     Integer, intent(in) :: N_x, N_y
-    Real, dimension(N_x+1,N_y+1), intent(in) :: U, V
+    Real, dimension(N_x+1,N_y), intent(out) :: U
+    Real, dimension(N_x,N_y+1), intent(out) :: V
     Real, dimension(N_x), intent(in) :: Delta_x
     Real, dimension(N_y), intent(in) :: Delta_y
 
@@ -213,15 +214,12 @@ subroutine delta_t(dt ,D, R, CFL, U, V, N_x,N_y, Tf, Delta_x, Delta_y)
     dt = Tf
 
     do i=1,N_x
-        do j = 1,N_y
-            !u_int = abs((U(i,j)+U(i+1,j))/2)          tentative de calcul de la vitesse au centre des cases
-            !v_int = abs((V(i,j)+V(i,j+1))/2)
-            !delta_int=1/((u_int/(CFL*Delta_x(i)))+(v_int/(CFL*Delta_y(j)))+(D/(R*Delta_x(i)**2))+(D/(R*Delta_y(j)**2)))
+        do j = 1,N_y                              
+            u_int = abs((U(i,j)+U(i+1,j))/2)          ! Vitesse au centre des faces
+            v_int = abs((V(i,j)+V(i,j+1))/2)
+            delta_int=1/((u_int/(CFL*Delta_x(i)))+(v_int/(CFL*Delta_y(j)))+(D/(R*Delta_x(i)**2))+(D/(R*Delta_y(j)**2)))
 
-            delta_int = 1/(abs(U(i,j))/(CFL*Delta_x(i))+(abs(V(i,j)))/(CFL*Delta_y(j))+(D/(R*Delta_x(i)**2))+&
-            (D/(R*Delta_y(j)**2)))
-
-            if (delta_int < dt) then
+            if (delta_int < dt) then                  ! On cherche le minimum
                 dt = delta_int
             end if
 
