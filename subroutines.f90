@@ -47,7 +47,7 @@ subroutine M_maill_reg(N,L,M_reg)
     Real,dimension(N+1),intent(out)::M_reg
 
     do i=1,N+1
-       M_reg(i)=L*(i-1)/(N-1)
+       M_reg(i)=L*(i-1)/(N)
     end do
     
 end subroutine M_maill_reg
@@ -179,16 +179,15 @@ subroutine Vitesse(alpha, beta, L, N_x, N_y, X_n, Y_n, X_c, Y_c, U, V)
     Real, dimension(N_x,N_y+1), intent(out) :: V
 
     Integer :: i, j   ! Attention, mettre au centre des faces
-
     do i=1,N_x+1
         do j=1,N_y
-            U(i,j)=alpha*sin(acos(-1.)*((X_n(i)/L)-(beta/2)))*cos(acos(-1.)*((Y_c(j)/L)-(beta/2)))
+            U(i,j)=alpha*sin(acos(-1.)*X_n(i)/L-(acos(-1.)*beta/2))*cos(acos(-1.)*Y_c(j)/L-(acos(-1.)*beta/2))
         end do
     end do
 
     do i=1,N_x
         do j=1,N_y+1
-            V(i,j)=-alpha*cos(acos(-1.)*((X_c(i)/L)-(beta/2)))*sin(acos(-1.)*((Y_n(j)/L)-(beta/2)))
+            V(i,j)=-alpha*cos(acos(-1.)*(X_c(i)/L)-(acos(-1.)*beta/2))*sin(acos(-1.)*Y_n(j)/L-(acos(-1.)*beta/2))
         end do
     end do
     
@@ -258,10 +257,10 @@ end subroutine C_initiale
 
 ! Calcul des flux advectifs
 
-subroutine F_adv(U, V, C, F_as, F_ao, F_an, F_ae, N_x, N_y, Delta_x, Delta_y, C1, C0)
+subroutine F_adv(U, V, C, F_as, F_ao, F_an, F_ae, N_x, N_y, Delta_x, Delta_y, C1, C0, beta)
     Implicit None
 
-    Integer, intent(in) :: N_x, N_y
+    Integer, intent(in) :: N_x, N_y, beta
     real, intent(in) :: C1, C0
     Real, dimension(N_x+1,N_y), intent(in) :: U
     Real, dimension(N_x,N_y+1), intent(in) :: V
@@ -274,9 +273,16 @@ subroutine F_adv(U, V, C, F_as, F_ao, F_an, F_ae, N_x, N_y, Delta_x, Delta_y, C1
     Integer :: is, js, io, jo, in, jn, ie, je
 
     ! Calcul du flux advectif sud
-    F_as(:,1) = -V(:,1)*C1*Delta_x(:)        ! Condition limite
 
-    do is=1, N_x
+    do is=1, N_x                        ! Condition limite
+        if (V(is,1) > 0) then
+            F_as(is,1) = -V(is,1)*C1*Delta_x(is)
+        else
+            F_as(is,1) = -V(is,1)*C(is,1)*Delta_x(is)
+        end if
+    end do
+
+    do is=1, N_x                         ! Cas général
         do js=2, N_y
             if (V(is,js) > 0) then
                 F_as(is,js) = -V(is,js)*C(is,js-1)*Delta_x(is)
@@ -287,8 +293,13 @@ subroutine F_adv(U, V, C, F_as, F_ao, F_an, F_ae, N_x, N_y, Delta_x, Delta_y, C1
     end do
     
     ! Calcul du flux advectif ouest
-    F_ao(1,:) = 0.0                                ! Condition limite
-    do io=2, N_x            ! Pas de conditions limites indiquées
+    if (beta == 0) then 
+        F_ao(1,:) = 0.0                                ! Condition limite
+    else 
+        F_ao(1,:) = -U(1,:)*C(1,:)*Delta_y(:)
+    end if
+
+    do io=2, N_x            
         do jo=1, N_y
             if (U(io,jo) > 0) then
                 F_ao(io,jo) = -U(io,jo)*C(io-1,jo)*Delta_y(jo)
@@ -299,9 +310,16 @@ subroutine F_adv(U, V, C, F_as, F_ao, F_an, F_ae, N_x, N_y, Delta_x, Delta_y, C1
     end do
 
         ! Calcul du flux advectif nord
-    F_an(:,N_y) = V(:,N_y+1)*C0*Delta_x(:)    ! Condition limite
+    
+    do in=1, N_x    ! Condition limite
+        if (V(in,N_y+1) > 0) then
+            F_an(in,N_y) = V(in,N_y+1)*C(in,N_y)*Delta_x(in)
+        else
+            F_an(in,N_y) = V(in,N_y+1)*C0*Delta_x(in)
+        end if
+    end do
 
-    do in=1, N_x
+    do in=1, N_x   ! Cas général
         do jn=1, N_y-1
             if (V(in,jn+1) > 0) then
                 F_an(in,jn) = V(in,jn+1)*C(in,jn)*Delta_x(in)
@@ -313,8 +331,13 @@ subroutine F_adv(U, V, C, F_as, F_ao, F_an, F_ae, N_x, N_y, Delta_x, Delta_y, C1
     
     ! Calcul du flux advectif est
     
-    F_ae(N_x,:) = 0.0                          ! Condition limite
-    do ie=1, N_x-1            ! Pas de conditions limites indiquées
+    if (beta == 0) then
+        F_ae(N_x,:) = 0.0                          ! Condition limite
+    else
+        F_ae(N_x,:) = U(N_x+1,:)*C(N_x,:)*Delta_y(:)
+    end if
+
+    do ie=1, N_x-1            
         do je=1, N_y
             if (U(ie,je) > 0) then
                 F_ae(ie,je) = U(ie+1,je)*C(ie,je)*Delta_y(je)
@@ -373,11 +396,11 @@ subroutine F_diff(D, C, F_ds, F_do, F_dn, F_de, N_x, N_y, Delta_x, Delta_y, dx, 
         end do
     end if
 
-        ! Calcul
+    ! Calcul
     
     do io=2, N_x
         do jo=1, N_y
-            F_do(io,jo) = -D*Delta_y(jo)*(C(io,jo)-C(io-1,jo))/dx(io-1)
+            F_do(io,jo) = -D*Delta_y(jo)*(C(io,jo)-C(io-1,jo))/dx(io-1)  
         end do
     end do
 
@@ -400,7 +423,7 @@ subroutine F_diff(D, C, F_ds, F_do, F_dn, F_de, N_x, N_y, Delta_x, Delta_y, dx, 
             F_de(ie,je) = D*Delta_y(je)*(C(ie+1,je)-C(ie,je))/dx(ie)
         end do
     end do
-    
+
 end subroutine F_diff
 
 ! Calcul de la concentration
@@ -420,11 +443,11 @@ subroutine C_new(C_next, C_old, F_as, F_ao, F_an, F_ae, F_ds, F_do, F_dn, F_de, 
 
     do i=1, N_x
         do j=1, N_y
-            ! C_next(i,j) = C_old(i,j) - dt*(F_as(i,j) + F_ao(i,j) + F_an(i,j) + F_ae(i,j)& 
-            ! + F_ds(i,j) + F_do(i,j) + F_dn(i,j) + F_de(i,j))/(Delta_x(i)*Delta_y(j))
-
             C_next(i,j) = C_old(i,j) - dt*(F_as(i,j) + F_ao(i,j) + F_an(i,j) + F_ae(i,j)& 
-            )/(Delta_x(i)*Delta_y(j))
+            - F_ds(i,j) - F_do(i,j) - F_dn(i,j) - F_de(i,j))/(Delta_x(i)*Delta_y(j))
+
+            !C_next(i,j) = C_old(i,j) - dt*(F_ds(i,j) + F_do(i,j) + F_dn(i,j) + F_de(i,j)& 
+            !)/(Delta_x(i)*Delta_y(j))
         end do
     end do
 

@@ -50,12 +50,12 @@ program BE
     allocate(U(data_num%N_x+1, data_num%N_y))
     allocate(V(data_num%N_x, data_num%N_y+1))
 
-    call U_verifA(data_phys%alpha, data_phys%beta, data_phys%L,&
+    call Vitesse(data_phys%alpha, data_phys%beta, data_phys%L,&
      data_num%N_x, data_num%N_y, X_reg, Y_irreg, X_centre, Y_centre, U, V)
     
     ! Calcul de delta_t
     call delta_t(dt, data_phys%D, data_num%R, data_num%CFL, U, V, data_num%N_x, data_num%N_y, data_phys%Tf, Delta_x, Delta_y)
-    write(*,*) "dt = ", dt
+
     ! Utilisation VTSWriter
         !Création des matrices de coordonnées
     allocate(Mx(data_num%N_x+1, data_num%N_y+1))
@@ -67,7 +67,7 @@ program BE
         ! Création du tableau de concentration initiale de taille N_x * N_y
     allocate(C_init(data_num%N_x, data_num%N_y))
     
-    call C_init_verifA(data_phys%C0, data_phys%C1, C_init, data_num%N_x, data_num%N_y)
+    call C_initiale(data_phys%C0, data_phys%C1, C_init, data_num%N_x, data_num%N_y)
 
         ! Ecriture des fichiers VTS
 
@@ -95,10 +95,11 @@ program BE
     C_old = C_init
     
     ! itération
-    do i_temps = 1, 50
+    do i_temps = 1, 1000
 
         ! Calcul flux advectif
-        call F_adv(U, V, C_old, F_as, F_ao, F_an, F_ae, data_num%N_x, data_num%N_y, delta_x, delta_y, data_phys%C1, data_phys%C0)
+        call F_adv(U, V, C_old, F_as, F_ao, F_an, F_ae, data_num%N_x, data_num%N_y, delta_x, delta_y, data_phys%C1, &
+            data_phys%C0, data_phys%beta)
 
         ! Calcul flux diffusif
         call F_diff(data_phys%D, C_old, F_ds, F_do, F_dn, F_de, data_num%N_x, data_num%N_y, delta_x, delta_y, dx, dy, &
@@ -113,7 +114,7 @@ program BE
         C_old = C_next
     end do
 
-    call VTSWriter(51*dt,51,data_num%N_x+1,data_num%N_y+1,Mx, My, C_next, U, V, "end")
+    call VTSWriter(1001*dt,1001,data_num%N_x+1,data_num%N_y+1,Mx, My, C_next, U, V, "end")
 
     ! Libération de la mémoire
     deallocate(X_reg)

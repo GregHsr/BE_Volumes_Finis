@@ -9,15 +9,15 @@ subroutine C_init_verifA(C0, C1, C_init, N_x, N_y)
     
     integer :: i, j
 
-    do i = 1, N_x 
-        do j = 1, N_y/2
+    do i = 1, N_x/2 
+        do j = 1, N_y
             C_init(i,j) = C0
         end do
     end do
 
-    do i = 1, N_x 
-        do j = N_y/2 + 1, N_y
-            C_init(i,j) = C0
+    do i = N_x/2+1, N_x 
+        do j = 1, N_y
+            C_init(i,j) = C1
         end do
     end do
 
