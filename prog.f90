@@ -114,6 +114,7 @@ program BE
         C_old = C_next
     end do
 
+    call C_new(C_next, C_old, F_as, F_ao, F_an, F_ae, F_ds, F_do, F_dn, F_de, data_num%N_x, data_num%N_y, delta_x, delta_y, dt)
     call VTSWriter(1001*dt,1001,data_num%N_x+1,data_num%N_y+1,Mx, My, C_next, U, V, "end")
 
     ! Libération de la mémoire
