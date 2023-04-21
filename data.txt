@@ -1,11 +1,11 @@
 # Physical parameters
 
-0.5       ! L  : length of the domain (m)
-0.1   ! D  : diffusivity (m^2/s)
+1       ! L  : length of the domain (m)
+0.   ! D  : diffusivity (m^2/s)
  0.       ! C0 : initial concentration in the area 0
  1.       ! C1 : initial concentration in the area 1
  100.     ! Tf : final time (s)
-0       ! alpha
+1       ! alpha
 0         ! beta :0 pour I, 1 pour X
 
  # Numerical parameters 
@@ -13,5 +13,5 @@
 20      ! N_x : number of cells in x-direction PRENDRE UN NOMBRE PAIR
 20       ! N_y : number of cells in y-direction PRENDRE UN NOMBRE PAIR
 0       ! gamma : -1 en I, 1 en X, 0 maillage régulier
-0.4       ! R : Fourier number
-0.8      ! CFL : Courant–Friedrichs–Lewy number
+0.5       ! R : Fourier number
+1      ! CFL : Courant–Friedrichs–Lewy number

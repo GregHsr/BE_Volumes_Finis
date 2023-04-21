@@ -8,7 +8,7 @@ program BE
     real, dimension(:), allocatable :: X_reg, Y_reg, Y_irreg, delta_x, delta_y, dx, dy, X_centre, Y_centre
     real, dimension(:,:), allocatable :: U, V, Mx, My, C_init, F_as, F_ao, F_an, F_ae, F_ds, F_do, F_dn, F_de, C_next, C_old
     real :: dt
-    integer :: i_temps
+    integer :: i_temps,i
 
     call read_data("data.txt", data_phys, data_num)
  
@@ -33,8 +33,8 @@ program BE
     call Grands_Delta(Y_irreg, data_num%N_y, delta_y)
 
         !Petits Delta
-    allocate(dx(data_num%N_x+1))
-    allocate(dy(data_num%N_y+1))
+    allocate(dx(data_num%N_x-1))
+    allocate(dy(data_num%N_y-1))
 
     call Petits_Delta(data_num%N_x,delta_x ,dx)
     call Petits_Delta(data_num%N_y,delta_y ,dy)
@@ -43,8 +43,8 @@ program BE
     allocate(X_centre(data_num%N_x))
     allocate(Y_centre(data_num%N_y))
 
-    call maillage_centre(dx, X_centre, data_num%N_x)
-    call maillage_centre(dy, Y_centre, data_num%N_y)
+    call maillage_centre(dx,Delta_x, X_centre, data_num%N_x)
+    call maillage_centre(dy,Delta_y, Y_centre, data_num%N_y)
 
     ! Initialisation des tableaux de vitesse
     allocate(U(data_num%N_x+1, data_num%N_y))
@@ -67,7 +67,7 @@ program BE
         ! Création du tableau de concentration initiale de taille N_x * N_y
     allocate(C_init(data_num%N_x, data_num%N_y))
     
-    call C_initiale(data_phys%C0, data_phys%C1, C_init, data_num%N_x, data_num%N_y)
+    call C_init_verifA(data_phys%C0, data_phys%C1, C_init, data_num%N_x, data_num%N_y)
 
         ! Ecriture des fichiers VTS
 
@@ -93,7 +93,22 @@ program BE
     allocate (C_old(data_num%N_x, data_num%N_y))
 
     C_old = C_init
-    
+    write(*,*) " "
+    do i = 1, data_num%N_x-1
+        write(*,*) "i,dx(i)", i,dx(i)
+    end do 
+    write(*,*) " "
+    do i = 1, data_num%N_x
+        write(*,*) "i,delta_x(i)", i,delta_x(i)
+    end do 
+    write(*,*) " "
+    do i = 1, data_num%N_y-1
+        write(*,*) "i,dy(i)", i,dy(i)
+    end do 
+    write(*,*) " "
+    do i = 1, data_num%N_y
+        write(*,*) "i,delta_y(i)", i,delta_y(i)
+    end do 
     ! itération
     do i_temps = 1, 1000
 
@@ -102,8 +117,7 @@ program BE
             data_phys%C0, data_phys%beta)
 
         ! Calcul flux diffusif
-        call F_diff(data_phys%D, C_old, F_ds, F_do, F_dn, F_de, data_num%N_x, data_num%N_y, delta_x, delta_y, dx, dy, &
-                data_phys%beta, data_phys%C0, data_phys%C1)
+        call F_diff(C_old, F_ds, F_do, F_dn, F_de, delta_x, delta_y, dx, dy, data_num, data_phys)
         
         ! Calcul de la concentration
         call C_new(C_next, C_old, F_as, F_ao, F_an, F_ae, F_ds, F_do, F_dn, F_de, data_num%N_x, data_num%N_y, delta_x, delta_y, dt)

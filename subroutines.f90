@@ -132,32 +132,30 @@ subroutine Petits_Delta(N, delta, d)
     Integer,intent(in)::N
     Real, dimension(N), intent(in) :: delta
 
-    Real, dimension(N+1), intent(out) :: d
+    Real, dimension(N-1), intent(out) :: d
 
     Integer::i
-    d(1)=delta(1)/2
-    d(N+1)=delta(N)/2
-    do i=2,N
-       d(i)=(delta(i)+delta(i-1))/2
+    do i=1,N-1
+       d(i)=(delta(i+1)+delta(i))/2
     end do
-
 end subroutine Petits_Delta
 
 ! Calcul du maillage centre
 
-subroutine maillage_centre(dm, M_centre, N)
+subroutine maillage_centre(dm, delta_m, M_centre, N)
     Implicit none
 
     Integer,intent(in)::N
-    Real, dimension(N+1), intent(in) :: dm
+    Real, dimension(N-1), intent(in) :: dm
+    Real, dimension(N), intent(in) :: delta_m
 
     Real, dimension(N), intent(out) :: M_centre
 
     integer :: i
 
-    M_centre(1)=dm(1)
+    M_centre(1)=delta_m(1)/2
     do i=2,N
-       M_centre(i)=M_centre(i-1)+dm(i)
+       M_centre(i)=M_centre(i-1)+dm(i-1)
     end do
 
 end subroutine maillage_centre
@@ -351,36 +349,38 @@ end subroutine F_adv
 
 ! Calcul des flux diffusifs
 
-subroutine F_diff(D, C, F_ds, F_do, F_dn, F_de, N_x, N_y, Delta_x, Delta_y, dx, dy, beta, C0, C1)
+subroutine F_diff(C, F_ds, F_do, F_dn, F_de, Delta_x, Delta_y, dx, dy, data_num, data_phys)
+    use m_type
     Implicit None
 
-    Integer, intent(in) :: N_x, N_y, beta
-    Real, intent(in) :: D, C0, C1
-    Real, dimension(N_x,N_y), intent(in) :: C
-    real, dimension(N_x), intent(in) :: Delta_x
-    real, dimension(N_y), intent(in) :: Delta_y
-    real, dimension(N_x+1), intent(in) :: dx
-    real, dimension(N_y+1), intent(in) :: dy    
+    type(phys), intent(in) :: data_phys
+    type(num), intent(in) :: data_num
 
-    Real, dimension(N_x,N_y), intent(out) :: F_ds, F_do, F_dn, F_de
+    Real, dimension(data_num%N_x,data_num%N_y), intent(in) :: C
+    real, dimension(data_num%N_x), intent(in) :: Delta_x
+    real, dimension(data_num%N_y), intent(in) :: Delta_y
+    real, dimension(data_num%N_x-1), intent(in) :: dx
+    real, dimension(data_num%N_y-1), intent(in) :: dy    
+
+    Real, dimension(data_num%N_x,data_num%N_y), intent(out) :: F_ds, F_do, F_dn, F_de
 
     Integer :: is, js, io, jo, jol, in, jn, ie, je, jel
 
     ! Calcul du flux diffusif sud
 
-    do is=1, N_x
-        F_ds(is,1)= -D*2*Delta_x(is)*(C(is,1)-C1)/Delta_y(1)   ! Condition limite
-        do js=2, N_y
-            F_ds(is,js) = -D*Delta_x(is)*(C(is,js)-C(is,js-1))/dy(js-1)
+    do is=1, data_num%N_x
+        F_ds(is,1)= -data_phys%D*2*Delta_x(is)*(C(is,1)-data_phys%C1)/Delta_y(1)   ! Condition limite
+        do js=2, data_num%N_y
+            F_ds(is,js) = -data_phys%D*Delta_x(is)*(C(is,js)-C(is,js-1))/dy(js-1)
         end do
     end do
 
     ! Calcul du flux diffusif nord
 
-    do in=1, N_x
-        F_dn(in,N_y)= D*2*Delta_x(in)*(C0-C(in,N_y))/Delta_y(N_y)   ! Condition limite
-        do jn=1, N_y-1
-            F_dn(in,jn) = D*Delta_x(in)*(C(in,jn+1)-C(in,jn))/dy(jn)
+    do in=1, data_num%N_x
+        F_dn(in,data_num%N_y)= data_phys%D*2*Delta_x(in)*(data_phys%C0-C(in,data_num%N_y))/Delta_y(data_num%N_y)   ! Condition limite
+        do jn=1, data_num%N_y-1
+            F_dn(in,jn) = data_phys%D*Delta_x(in)*(C(in,jn+1)-C(in,jn))/dy(jn)
         end do
     end do
 
@@ -388,19 +388,21 @@ subroutine F_diff(D, C, F_ds, F_do, F_dn, F_de, N_x, N_y, Delta_x, Delta_y, dx, 
 
         ! Condition Limite
 
-    if (beta==0) then
-        F_do(1,:) = 0
+    if (data_phys%beta==0) then
+        do jol = 1, data_num%N_y    
+            F_do(1,jol) = 0.
+        end do
     else
-        do jol=1, N_y
-            F_do(1,jol)=-D*Delta_y(jol)*(C(2,jol)-C(1,jol))/dx(1)  
+        do jol=1, data_num%N_y
+            F_do(1,jol)=-data_phys%D*Delta_y(jol)*(C(2,jol)-C(1,jol))/dx(1) 
         end do
     end if
 
     ! Calcul
     
-    do io=2, N_x
-        do jo=1, N_y
-            F_do(io,jo) = -D*Delta_y(jo)*(C(io,jo)-C(io-1,jo))/dx(io-1)  
+    do io=2, data_num%N_x
+        do jo=1, data_num%N_y
+            F_do(io,jo) = -data_phys%D*Delta_y(jo)*(C(io,jo)-C(io-1,jo))/dx(io-1)  
         end do
     end do
 
@@ -408,19 +410,19 @@ subroutine F_diff(D, C, F_ds, F_do, F_dn, F_de, N_x, N_y, Delta_x, Delta_y, dx, 
 
         ! Condition Limite
 
-    if (beta==0) then
-        F_de(N_x,:) = 0
+    if (data_phys%beta==0) then
+        F_de(data_num%N_x,:) = 0
     else
-        do jel=1, N_y
-            F_de(N_x,jel)=D*Delta_y(jel)*(C(N_x,jel)-C(N_x-1,jel))/dx(N_x)  
+        do jel=1, data_num%N_y
+            F_de(data_num%N_x,jel)=data_phys%D*Delta_y(jel)*(C(data_num%N_x,jel)-C(data_num%N_x-1,jel))/dx(data_num%N_x)  
         end do
     end if
 
         ! Calcul
     
-    do ie=1, N_x-1
-        do je=1, N_y
-            F_de(ie,je) = D*Delta_y(je)*(C(ie+1,je)-C(ie,je))/dx(ie)
+    do ie=1, data_num%N_x-1
+        do je=1, data_num%N_y
+            F_de(ie,je) = data_phys%D*Delta_y(je)*(C(ie+1,je)-C(ie,je))/dx(ie)
         end do
     end do
 
@@ -446,8 +448,8 @@ subroutine C_new(C_next, C_old, F_as, F_ao, F_an, F_ae, F_ds, F_do, F_dn, F_de, 
             C_next(i,j) = C_old(i,j) - dt*(F_as(i,j) + F_ao(i,j) + F_an(i,j) + F_ae(i,j)& 
             - F_ds(i,j) - F_do(i,j) - F_dn(i,j) - F_de(i,j))/(Delta_x(i)*Delta_y(j))
 
-            !C_next(i,j) = C_old(i,j) - dt*(F_ds(i,j) + F_do(i,j) + F_dn(i,j) + F_de(i,j)& 
-            !)/(Delta_x(i)*Delta_y(j))
+            !C_next(i,j) = C_old(i,j) + dt*(F_ds(i,j) + F_de(i,j) + F_do(i,j) + F_dn(i,j) & 
+            !)/(Delta_x(i)*Delta_y(j)) !
         end do
     end do
 
