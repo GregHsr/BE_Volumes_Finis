@@ -345,7 +345,12 @@ subroutine C_initiale(C_init, data_phys, data_num)
 
 end subroutine C_initiale
 
-! Calcul des flux advectifs
+
+! Calcul des flux advectifs -> F_as, F_ao, F_an, F_ae
+! F_as : flux advectif sud
+! F_ao : flux advectif ouest
+! F_an : flux advectif nord
+! F_ae : flux advectif est
 
 subroutine F_adv(U, V, C, F_as, F_ao, F_an, F_ae, Delta_x, Delta_y, data_phys, data_num)
     
@@ -388,6 +393,7 @@ subroutine F_adv(U, V, C, F_as, F_ao, F_an, F_ae, Delta_x, Delta_y, data_phys, d
     end do
     
     ! Calcul du flux advectif ouest
+
     if (data_phys%beta == 0) then 
         do jo =1,data_num%N_y
             F_ao(1,jo) = 0.0                                ! Condition limite
@@ -448,8 +454,6 @@ subroutine F_adv(U, V, C, F_as, F_ao, F_an, F_ae, Delta_x, Delta_y, data_phys, d
         end do
     end if
         
-    
-
     do ie=1, data_num%N_x-1            
         do je=1, data_num%N_y
             if (U(ie,je) > 0) then
@@ -462,7 +466,11 @@ subroutine F_adv(U, V, C, F_as, F_ao, F_an, F_ae, Delta_x, Delta_y, data_phys, d
 
 end subroutine F_adv
 
-! Calcul des flux diffusifs
+! Calcul des flux diffusifs -> F_ds, F_do, F_dn, F_de
+! F_ds : flux diffusif sud
+! F_do : flux diffusif ouest
+! F_dn : flux diffusif nord
+! F_de : flux diffusif est
 
 subroutine F_diff(C, F_ds, F_do, F_dn, F_de, Delta_x, Delta_y, dx, dy, data_num, data_phys)
     use m_type
@@ -543,7 +551,8 @@ subroutine F_diff(C, F_ds, F_do, F_dn, F_de, Delta_x, Delta_y, dx, dy, data_num,
 
 end subroutine F_diff
 
-! Calcul de la concentration
+! Calcul de la concentration -> C_next
+! C_next : concentration à l'instant suivant
 
 subroutine C_new(C_next, C_old, F_as, F_ao, F_an, F_ae, F_ds, F_do, F_dn, F_de, N_x, N_y, Delta_x, Delta_y, dt)
     Implicit None

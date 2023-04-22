@@ -6,10 +6,11 @@ program BE
     type (phys):: data_phys
     type (num):: data_num
 
-    integer :: N_t, i_temps
+    integer :: N_t, i_temps, i
     real :: dt
 
-    real, dimension(:), allocatable :: X_Nreg, Y_Nreg, Y_Nirreg, X_C, Y_C, delta_X, delta_Y, dx, dy
+    real, dimension(:), allocatable :: X_Nreg, Y_Nreg, Y_Nirreg, X_C, Y_C, delta_X, delta_Y, dx, dy, &
+                                        C_ax, C_ay
     real, dimension(:,:), allocatable :: U, V, Tab_X_N, Tab_Y_N, C_init, C_next, C_old, F_ae, F_ao, &
                                         F_an, F_as, F_de, F_do, F_dn, F_ds
 
@@ -18,42 +19,42 @@ program BE
     
     !------- Création du maillage ------!
 
-        ! Maillage régulier (noeuds)
-        allocate(X_Nreg(data_num%N_x+1))
-        allocate(Y_Nreg(data_num%N_y+1))
+    ! Maillage régulier (noeuds)
+    allocate(X_Nreg(data_num%N_x+1))
+    allocate(Y_Nreg(data_num%N_y+1))
 
-        call Maillage_noeud_regulier(X_Nreg, Y_Nreg, data_phys, data_num)
-        !write(*,*) "X_Nreg", X_Nreg
-        !write(*,*) "Y_Nreg", Y_Nreg
+    call Maillage_noeud_regulier(X_Nreg, Y_Nreg, data_phys, data_num)
+    !write(*,*) "X_Nreg", X_Nreg
+    !write(*,*) "Y_Nreg", Y_Nreg
         
-        ! Maillage irrégulier (noueds)
-        allocate(Y_Nirreg(data_num%N_y+1))
+    ! Maillage irrégulier (noueds)
+    allocate(Y_Nirreg(data_num%N_y+1))
 
-        call Maillage_noeud_irregulier(Y_Nirreg, Y_Nreg, data_phys, data_num)
-        !write(*,*) "Y_Nirreg", Y_Nirreg
+    call Maillage_noeud_irregulier(Y_Nirreg, Y_Nreg, data_phys, data_num)
+    !write(*,*) "Y_Nirreg", Y_Nirreg
 
-        ! Coordonnées des centres des faces
-        allocate(X_C(data_num%N_x))
-        allocate(Y_C(data_num%N_y))
+    ! Coordonnées des centres des faces
+    allocate(X_C(data_num%N_x))
+    allocate(Y_C(data_num%N_y))
 
-        call Maillage_centre(X_C, Y_C, X_Nreg, Y_Nirreg, data_num)
+    call Maillage_centre(X_C, Y_C, X_Nreg, Y_Nirreg, data_num)
 
-        ! Calcul des deltas
-            ! Calcul des grands deltas (entre les noeuds)
-            allocate(delta_X(data_num%N_x))
-            allocate(delta_Y(data_num%N_y))
+    ! Calcul des deltas
+        ! Calcul des grands deltas (entre les noeuds)
+        allocate(delta_X(data_num%N_x))
+        allocate(delta_Y(data_num%N_y))
 
-            call Delta_noeuds(delta_X, delta_Y, X_Nreg, Y_Nirreg, data_num)
-            !write(*,*) "Delta_x", delta_X
-            !write(*,*) "Delta_y", delta_Y
+        call Delta_noeuds(delta_X, delta_Y, X_Nreg, Y_Nirreg, data_num)
+        !write(*,*) "Delta_x", delta_X
+        !write(*,*) "Delta_y", delta_Y
 
-            ! Calcul des petits deltas (entre les centres)
-            allocate(dx(data_num%N_x-1))
-            allocate(dy(data_num%N_y-1))
+        ! Calcul des petits deltas (entre les centres)
+        allocate(dx(data_num%N_x-1))
+        allocate(dy(data_num%N_y-1))
 
-            call Delta_centres(dx, dy, X_C, Y_C, data_num)
-            !write(*,*) "dx", dx
-            !write(*,*) "dy", dy
+        call Delta_centres(dx, dy, X_C, Y_C, data_num)
+        !write(*,*) "dx", dx
+        !write(*,*) "dy", dy
 
     !------- Calcul de la vitesse -------!
     allocate(U(data_num%N_x+1,data_num%N_y))
@@ -75,17 +76,24 @@ program BE
     !write(*,*) "Tab_Y_N", Tab_Y_N
 
     !------------- Calculs --------------!
+
         ! Initilisation de la concentration et VTSWriter
+
         allocate(C_init(data_num%N_x,data_num%N_y))
 
-        call C_init_verifA(C_init, data_phys, data_num)
+        call C_initiale(C_init, data_phys, data_num)
         !write(*,*) "C_init", C_init
 
         call VTSWriter(0,0,data_num%N_x+1,data_num%N_y+1,Tab_X_N,Tab_Y_N,C_init,U,V,'ini')
 
-        ! Calcul de la concentration
+        ! Création du fichier d'analyse
 
-        !--- Allocation des tableaux---!
+        open(1,file='sol_analyse.csv',status='replace')
+
+        !---Calcul de la concentration---!
+
+        ! Allocation des tableaux
+
         allocate(C_next(data_num%N_x,data_num%N_y))
         allocate(C_old(data_num%N_x,data_num%N_y))
 
@@ -98,7 +106,8 @@ program BE
         allocate(F_dn(data_num%N_x,data_num%N_y))
         allocate(F_ds(data_num%N_x,data_num%N_y))
 
-        !---- Boucle temporelle ----!
+        ! Boucle temporelle
+
         C_old = C_init
 
         do i_temps=1,N_t-1
@@ -113,14 +122,48 @@ program BE
             call C_new(C_next, C_old, F_as, F_ao, F_an, F_ae, F_ds, F_do, F_dn, F_de,&
                          data_num%N_x, data_num%N_y, delta_x, delta_y, dt)
 
-            ! Création du fichier
-            call VTSWriter(i_temps*dt,i_temps,data_num%N_x+1,data_num%N_y+1,Tab_X_N,Tab_Y_N,C_next,U,V,'int')
+            ! Enregistrement des résultats tous les 100 pas de temps
+
+            if (mod(i_temps,100) == 0) then
+                !write(*,*) "i_temps", i_temps
+                ! Ecriture du fichier
+                call VTSWriter(i_temps*dt,i_temps,data_num%N_x+1,data_num%N_y+1,Tab_X_N,Tab_Y_N,C_next,U,V,'int')
+
+                ! Enregistrement des réultats pour analyse
+                allocate(C_ax(data_num%N_x))
+                allocate(C_ay(data_num%N_y))
+                
+                call C_analytique(X_C, Y_C, C_ax, C_ay, i_temps, dt, data_phys, data_num)
+
+                write(1,*) i_temps*dt
+
+                do i = 1, data_num%N_x
+                    write(1,*) C_ax(i)
+                end do
+
+                do i = 1, data_num%N_x
+                    write(1,*) C_next(i,data_num%N_y/2)
+                end do
+
+                do i = 1, data_num%N_y
+                    write(1,*) C_ay(i)
+                end do
+
+                do i = 1, data_num%N_y
+                    write(1,*) C_next(data_num%N_x/2,i)
+                end do
+
+                deallocate(C_ax)
+                deallocate(C_ay)
+            end if
+            
             C_old = C_next
         end do        
         
         call C_new(C_next, C_old, F_as, F_ao, F_an, F_ae, F_ds, F_do, F_dn, F_de,&
                          data_num%N_x, data_num%N_y, delta_x, delta_y, dt)
-        call VTSWriter(N_t*dt,N_t,data_num%N_x+1,data_num%N_y+1,Tab_X_N,Tab_Y_N,C_next,U,V,'end')
+        call VTSWriter(N_t*dt,N_t,data_num%N_x+1,data_num%N_y+1,Tab_X_N,Tab_Y_N,C_next,U,V,'end')    
+
 
     !----- Libération de la mémoire -----!
     deallocate(X_Nreg)
@@ -147,6 +190,8 @@ program BE
     deallocate(F_do)
     deallocate(F_dn)
     deallocate(F_ds)
+
+    close(1)
 
 end program BE
 
