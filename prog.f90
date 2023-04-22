@@ -93,24 +93,9 @@ program BE
     allocate (C_old(data_num%N_x, data_num%N_y))
 
     C_old = C_init
-    write(*,*) " "
-    do i = 1, data_num%N_x-1
-        write(*,*) "i,dx(i)", i,dx(i)
-    end do 
-    write(*,*) " "
-    do i = 1, data_num%N_x
-        write(*,*) "i,delta_x(i)", i,delta_x(i)
-    end do 
-    write(*,*) " "
-    do i = 1, data_num%N_y-1
-        write(*,*) "i,dy(i)", i,dy(i)
-    end do 
-    write(*,*) " "
-    do i = 1, data_num%N_y
-        write(*,*) "i,delta_y(i)", i,delta_y(i)
-    end do 
+
     ! itération
-    do i_temps = 1, 1000
+    do i_temps = 1, 10
 
         ! Calcul flux advectif
         call F_adv(U, V, C_old, F_as, F_ao, F_an, F_ae, data_num%N_x, data_num%N_y, delta_x, delta_y, data_phys%C1, &
@@ -121,15 +106,18 @@ program BE
         
         ! Calcul de la concentration
         call C_new(C_next, C_old, F_as, F_ao, F_an, F_ae, F_ds, F_do, F_dn, F_de, data_num%N_x, data_num%N_y, delta_x, delta_y, dt)
-        
+
         ! Création du fichier
         call VTSWriter(i_temps*dt,i_temps,data_num%N_x+1,data_num%N_y+1,Mx, My, C_next, U, V, "int")
         
         C_old = C_next
     end do
 
+    print*, v(1,2)
+
+    ! Dernier appel pour finaliser l'appel à VTSWriter
     call C_new(C_next, C_old, F_as, F_ao, F_an, F_ae, F_ds, F_do, F_dn, F_de, data_num%N_x, data_num%N_y, delta_x, delta_y, dt)
-    call VTSWriter(1001*dt,1001,data_num%N_x+1,data_num%N_y+1,Mx, My, C_next, U, V, "end")
+    call VTSWriter(11*dt,11,data_num%N_x+1,data_num%N_y+1,Mx, My, C_next, U, V, "end")
 
     ! Libération de la mémoire
     deallocate(X_reg)

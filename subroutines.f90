@@ -105,10 +105,11 @@ subroutine Matrice_y(N_x, N_y, M_y, Y_irreg)
     end do
 
 end subroutine Matrice_y
+! Fin des subroutines utiles que pour VTSWriter
 
 
 ! Calcul des delta_m
-    ! Calcul grands delta
+    ! Calcul grands delta (delta_x et delta_y)
 subroutine Grands_Delta(M, N, delta)
     Implicit none
 
@@ -125,7 +126,7 @@ subroutine Grands_Delta(M, N, delta)
 
 end subroutine Grands_Delta
 
-    ! Calcul petits delta
+    ! Calcul petits delta (dx et dy)
 subroutine Petits_Delta(N, delta, d)
     Implicit none
 
@@ -140,7 +141,7 @@ subroutine Petits_Delta(N, delta, d)
     end do
 end subroutine Petits_Delta
 
-! Calcul du maillage centre
+! Calcul du maillage centre pour connaître les coordonnées des centres des cellules
 
 subroutine maillage_centre(dm, delta_m, M_centre, N)
     Implicit none
@@ -223,6 +224,7 @@ subroutine delta_t(dt ,D, R, CFL, U, V, N_x,N_y, Tf, Delta_x, Delta_y)
         end do
     end do
 
+    ! Messages d'avertissement mis en raison d'erreurs rencontrées au début du projet
     if (dt > Tf) then
         write(*,*) "Pas de temps trop grand"
     end if
@@ -292,9 +294,17 @@ subroutine F_adv(U, V, C, F_as, F_ao, F_an, F_ae, N_x, N_y, Delta_x, Delta_y, C1
     
     ! Calcul du flux advectif ouest
     if (beta == 0) then 
-        F_ao(1,:) = 0.0                                ! Condition limite
+        do jo =1,N_y
+            F_ao(1,jo) = 0.0                                ! Condition limite
+        end do
     else 
-        F_ao(1,:) = -U(1,:)*C(1,:)*Delta_y(:)
+        do jo=1, N_y
+            if (U(1,jo)<0) then
+                F_ao(1,jo) = -U(1,jo)*C(1,jo)*Delta_y(jo)
+            else
+                F_ao(1,jo)=0.0
+            end if
+        end do      
     end if
 
     do io=2, N_x            
@@ -330,10 +340,20 @@ subroutine F_adv(U, V, C, F_as, F_ao, F_an, F_ae, N_x, N_y, Delta_x, Delta_y, C1
     ! Calcul du flux advectif est
     
     if (beta == 0) then
-        F_ae(N_x,:) = 0.0                          ! Condition limite
-    else
-        F_ae(N_x,:) = U(N_x+1,:)*C(N_x,:)*Delta_y(:)
+        do je = 1,N_y
+            F_ae(N_x,je) = 0.0                          ! Condition limite
+        end do
+    ! else                                                 ! Commenté le temps des tests en I
+    !     do je=1, N_y
+    !         if (U(N_x+1,je)>0) then
+    !             F_ae(N_x,je) = U(N_x+1,je)*C(N_x,je)*Delta_y(je)  
+    !         else
+    !             F_ae(N_x,je)=0.0
+    !         end if
+    !     end do
     end if
+        
+    
 
     do ie=1, N_x-1            
         do je=1, N_y
@@ -398,7 +418,7 @@ subroutine F_diff(C, F_ds, F_do, F_dn, F_de, Delta_x, Delta_y, dx, dy, data_num,
         end do
     end if
 
-    ! Calcul
+        ! Calcul
     
     do io=2, data_num%N_x
         do jo=1, data_num%N_y
@@ -446,11 +466,15 @@ subroutine C_new(C_next, C_old, F_as, F_ao, F_an, F_ae, F_ds, F_do, F_dn, F_de, 
     do i=1, N_x
         do j=1, N_y
             C_next(i,j) = C_old(i,j) - dt*(F_as(i,j) + F_ao(i,j) + F_an(i,j) + F_ae(i,j)& 
-            - F_ds(i,j) - F_do(i,j) - F_dn(i,j) - F_de(i,j))/(Delta_x(i)*Delta_y(j))
+            !- F_ds(i,j) - F_do(i,j) - F_dn(i,j) - F_de(i,j)
+            )/(Delta_x(i)*Delta_y(j))
 
             !C_next(i,j) = C_old(i,j) + dt*(F_ds(i,j) + F_de(i,j) + F_do(i,j) + F_dn(i,j) & 
-            !)/(Delta_x(i)*Delta_y(j)) !
+            !)/(Delta_x(i)*Delta_y(j)) !                                                            ! Calul avec seulement la diffusion
         end do
     end do
-
+    print*, C_old(1,2), C_next(1,2), F_ae(1,2),F_ao(1,2),F_an(1,2),F_as(1,2), dt, Delta_x(1), Delta_y(2),(Delta_x(1)*Delta_y(2))
+    print*, dt*(F_as(1,2) + F_ao(1,2) + F_an(1,2) + F_ae(1,2))/(Delta_x(1)*Delta_y(2))
+    print*, F_as(1,2) + F_ao(1,2) + F_an(1,2) + F_ae(1,2)
+    print*, dt/(Delta_x(1)*Delta_y(2))
 end subroutine C_new
