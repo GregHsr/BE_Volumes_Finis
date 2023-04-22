@@ -4,14 +4,14 @@
 0.01   ! D  : diffusivity (m^2/s)
 0.       ! C0 : initial concentration in the area 0
 1.       ! C1 : initial concentration in the area 1
-10.     ! Tf : final time (s)
-1       ! alpha
-0         ! beta :0 pour I, 1 pour X
+1.     ! Tf : final time (s)
+0.1       ! alpha
+1         ! beta :0 pour I, 1 pour X
 
  # Numerical parameters 
 
-10       ! N_x : number of cells in x-direction PRENDRE UN NOMBRE PAIR
-10       ! N_y : number of cells in y-direction PRENDRE UN NOMBRE PAIR
-0       ! gamma : -1 en I, 1 en X, 0 maillage régulier
+50       ! N_x : number of cells in x-direction PRENDRE UN NOMBRE PAIR
+50       ! N_y : number of cells in y-direction PRENDRE UN NOMBRE PAIR
+1       ! gamma : -1 en I, 1 en X, 0 maillage régulier
 0.45       ! R : Fourier number
 0.9      ! CFL : Courant–Friedrichs–Lewy number

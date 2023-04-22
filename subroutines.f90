@@ -438,14 +438,14 @@ subroutine F_adv(U, V, C, F_as, F_ao, F_an, F_ae, Delta_x, Delta_y, data_phys, d
         do je = 1,data_num%N_y
             F_ae(data_num%N_x,je) = 0.0                          ! Condition limite
         end do
-    ! else                                                 ! Commenté le temps des tests en I
-    !     do je=1, data_num%N_y
-    !         if (U(data_num%N_x+1,je)>0) then
-    !             F_ae(data_num%N_x,je) = U(data_num%N_x+1,je)*C(data_num%N_x,je)*Delta_y(je)  
-    !         else
-    !             F_ae(data_num%N_x,je)=0.0
-    !         end if
-    !     end do
+    else                                                 ! Commenté le temps des tests en I
+        do je=1, data_num%N_y
+            if (U(data_num%N_x+1,je)>0) then
+                F_ae(data_num%N_x,je) = U(data_num%N_x+1,je)*C(data_num%N_x,je)*Delta_y(je)  
+            else
+                F_ae(data_num%N_x,je)=0.0
+            end if
+        end do
     end if
         
     
@@ -529,7 +529,7 @@ subroutine F_diff(C, F_ds, F_do, F_dn, F_de, Delta_x, Delta_y, dx, dy, data_num,
         F_de(data_num%N_x,:) = 0
     else
         do jel=1, data_num%N_y
-            F_de(data_num%N_x,jel)=data_phys%D*Delta_y(jel)*(C(data_num%N_x,jel)-C(data_num%N_x-1,jel))/dx(data_num%N_x)  
+            F_de(data_num%N_x,jel)=data_phys%D*Delta_y(jel)*(C(data_num%N_x,jel)-C(data_num%N_x-1,jel))/dx(data_num%N_x-1)  
         end do
     end if
 
@@ -561,7 +561,7 @@ subroutine C_new(C_next, C_old, F_as, F_ao, F_an, F_ae, F_ds, F_do, F_dn, F_de, 
     do i=1, N_x
         do j=1, N_y
             C_next(i,j) = C_old(i,j) - dt*(&
-            !F_as(i,j) + F_ao(i,j) + F_an(i,j) + F_ae(i,j) & 
+            F_as(i,j) + F_ao(i,j) + F_an(i,j) + F_ae(i,j) & 
             - F_ds(i,j) - F_do(i,j) - F_dn(i,j) - F_de(i,j) &
             )/(Delta_x(i)*Delta_y(j))
         end do

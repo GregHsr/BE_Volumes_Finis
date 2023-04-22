@@ -78,7 +78,7 @@ program BE
         ! Initilisation de la concentration et VTSWriter
         allocate(C_init(data_num%N_x,data_num%N_y))
 
-        call C_initiale(C_init, data_phys, data_num)
+        call C_init_verifA(C_init, data_phys, data_num)
         !write(*,*) "C_init", C_init
 
         call VTSWriter(0,0,data_num%N_x+1,data_num%N_y+1,Tab_X_N,Tab_Y_N,C_init,U,V,'ini')
@@ -99,6 +99,8 @@ program BE
         allocate(F_ds(data_num%N_x,data_num%N_y))
 
         !---- Boucle temporelle ----!
+        C_old = C_init
+
         do i_temps=1,N_t-1
 
             ! Calcul flux advectif

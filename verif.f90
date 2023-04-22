@@ -1,23 +1,26 @@
 !Champ de concentration initial à adapter au test souhaité
 
-subroutine C_init_verifA(C0, C1, C_init, N_x, N_y)
+subroutine C_init_verifA(C_init, data_phys, data_num)
+    
+    use m_type
     Implicit none
 
-    Integer, intent(in) :: N_x, N_y
-    Real, intent(in) :: C0, C1
-    Real, dimension(N_x,N_y), intent(out) :: C_init
+    type(phys), intent(in) :: data_phys
+    type(num), intent(in) :: data_num
+    
+    Real, dimension(data_num%N_x,data_num%N_y), intent(out) :: C_init
     
     integer :: i, j
 
-    do i = 1, N_x 
-        do j = 1, N_y/2
-            C_init(i,j) = C0
+    do i = 1, data_num%N_x 
+        do j = 1, data_num%N_y/2
+            C_init(i,j) = data_phys%C0
         end do
     end do
 
-    do i = 1, N_x 
-        do j = N_y/2+1, N_y
-            C_init(i,j) = C1
+    do i = 1, data_num%N_x 
+        do j = data_num%N_y/2+1, data_num%N_y
+            C_init(i,j) = data_phys%C1
         end do
     end do
 
