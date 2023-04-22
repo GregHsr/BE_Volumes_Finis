@@ -1,4 +1,4 @@
-!!! Advection pure
+!Champ de concentration initial à adapter au test souhaité
 
 subroutine C_init_verifA(C0, C1, C_init, N_x, N_y)
     Implicit none
@@ -23,7 +23,7 @@ subroutine C_init_verifA(C0, C1, C_init, N_x, N_y)
 
 end subroutine C_init_verifA
 
-! Vitesse horizontale uniforme dans tout le domaine
+! Adapter la vitesse pour la verification
 
 subroutine U_verifA(alpha, beta, L, N_x, N_y, X_n, Y_n, X_c, Y_c, U, V)
     Implicit None
@@ -54,7 +54,8 @@ subroutine U_verifA(alpha, beta, L, N_x, N_y, X_n, Y_n, X_c, Y_c, U, V)
     
 end subroutine U_verifA
 
-!Solution analytique de la concentration
+! Solution analytique de la concentration
+! (pas encore testée)
 subroutine C_analytique(data_num, data_phys, X_reg, Y_irreg, C_ax, C_ay, i_temps, dt)
     use m_type
     implicit none
@@ -79,6 +80,7 @@ subroutine C_analytique(data_num, data_phys, X_reg, Y_irreg, C_ax, C_ay, i_temps
 
 end subroutine C_analytique
 
+! Calcul des flux diffusifs avec une méthode différente (même erreur)
 subroutine F_diff_verif(C, F_ds, F_do, F_dn, F_de, Delta_x, Delta_y, dx, dy, data_num, data_phys)
     use m_type
     Implicit None
