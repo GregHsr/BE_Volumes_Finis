@@ -36,220 +36,310 @@ subroutine read_data (filename, data_phys, data_num)
 
 end subroutine read_data
 
-! Création du maillage régulier face/noeuds
+!------------------------------------------MAILLAGE------------------------------------------------------!
 
-subroutine M_maill_reg(N,L,M_reg)
-    Implicit None
+! Création du maillage régulier (noeud) -> Coordonnées des noeuds 
+! X_N et Y_N : coordonnées des noeuds
 
-    Real,intent(in)::L
-    Integer,intent(in)::N
-    Integer::i
-    Real,dimension(N+1),intent(out)::M_reg
+subroutine Maillage_noeud_regulier(X_N, Y_N, data_phys, data_num)
 
-    do i=1,N+1
-       M_reg(i)=L*(i-1)/(N)
-    end do
-    
-end subroutine M_maill_reg
+    use m_type
+    implicit none
 
-! Création du maillage irrégulier face/noeuds
+    type(phys), intent(in) :: data_phys
+    type(num), intent(in) :: data_num
 
-subroutine M_maill_irreg(N, L, gamma, M_reg, M_irreg)
-    Implicit None
-
-    Real,intent(in)::L
-    Integer,intent(in)::N, gamma
-    Integer::i
-    Real,dimension(N+1),intent(in)::M_reg
-    Real,dimension(N+1),intent(out)::M_irreg
-
-    do i=1,N+1
-       M_irreg(i)=M_reg(i)+gamma*L*sin(2*acos(-1.)*M_reg(i)/L)/(3*acos(-1.))
-    end do
-    
-end subroutine M_maill_irreg
-
-! Définition des matrices de maillage comme répétition du vecteur pour VTSWriter
-    !  Multiplication des abcisses N_y +1 fois
-subroutine Matrice_x(N_x, N_y, M_x, X_reg)
-    Implicit None
-
-    Integer,intent(in)::N_x, N_y
-    Real,dimension(N_x+1,N_y+1),intent(out)::M_x
-    Real, dimension(N_x+1), intent(in) :: X_reg
-
-    Integer::i, j
-
-    do i=1,N_x+1
-        do j=1,N_y+1
-            M_x(i,j)= X_reg(i)
-        end do
-    end do
-
-end subroutine Matrice_x
-
-    ! Multiplication des ordonnées N_x +1 fois
-subroutine Matrice_y(N_x, N_y, M_y, Y_irreg)
-    Implicit None
-
-    Integer,intent(in)::N_x, N_y
-    Real,dimension(N_x+1,N_y+1),intent(out)::M_y
-    Real, dimension(N_y+1), intent(in) :: Y_irreg
-
-    Integer::i, j
-
-    do i=1,N_x+1
-        do j=1,N_y+1
-            M_y(i,j)= Y_irreg(j)
-        end do
-    end do
-
-end subroutine Matrice_y
-! Fin des subroutines utiles que pour VTSWriter
-
-
-! Calcul des delta_m
-    ! Calcul grands delta (delta_x et delta_y)
-subroutine Grands_Delta(M, N, delta)
-    Implicit none
-
-    Integer,intent(in)::N
-    Real,dimension(N+1),intent(in)::M
-
-    Real, dimension(N), intent(out) :: delta
-
-    Integer::i
-
-    do i=1,N
-       delta(i)=M(i+1)-M(i)
-    end do
-
-end subroutine Grands_Delta
-
-    ! Calcul petits delta (dx et dy)
-subroutine Petits_Delta(N, delta, d)
-    Implicit none
-
-    Integer,intent(in)::N
-    Real, dimension(N), intent(in) :: delta
-
-    Real, dimension(N-1), intent(out) :: d
-
-    Integer::i
-    do i=1,N-1
-       d(i)=(delta(i+1)+delta(i))/2
-    end do
-end subroutine Petits_Delta
-
-! Calcul du maillage centre pour connaître les coordonnées des centres des cellules
-
-subroutine maillage_centre(dm, delta_m, M_centre, N)
-    Implicit none
-
-    Integer,intent(in)::N
-    Real, dimension(N-1), intent(in) :: dm
-    Real, dimension(N), intent(in) :: delta_m
-
-    Real, dimension(N), intent(out) :: M_centre
+    real, dimension(data_num%N_x+1), intent(out) :: X_N
+    real, dimension(data_num%N_y+1), intent(out) :: Y_N
 
     integer :: i
 
-    M_centre(1)=delta_m(1)/2
-    do i=2,N
-       M_centre(i)=M_centre(i-1)+dm(i-1)
+    ! Calcul des abcisses des noeuds
+    do i = 1, data_num%N_x+1
+        X_N(i) = (i-1)*data_phys%L/data_num%N_x
     end do
 
-end subroutine maillage_centre
+    ! Calcul des ordonnées des noeuds
+    do i = 1, data_num%N_y+1
+        Y_N(i) = (i-1)*data_phys%L/data_num%N_y
+    end do
+
+end subroutine Maillage_noeud_regulier
 
 
-! Calcul des vitesses
+! Création du maillage irrégulier (noeud) (que pour y) -> Coordonnées des noeuds
+! Y_N : coordonnées des noeuds
 
-subroutine Vitesse(alpha, beta, L, N_x, N_y, X_n, Y_n, X_c, Y_c, U, V)
-    Implicit None
+subroutine Maillage_noeud_irregulier(Y_irreg, Y_reg, data_phys, data_num)
 
-    Integer, intent(in) :: beta, N_x, N_y
-    Real, intent(in) :: alpha, L
-    Real, dimension(N_x+1), intent(in) :: X_n
-    Real, dimension(N_y+1), intent(in) :: Y_n
-    Real, dimension(N_x), intent(in) :: X_c
-    Real, dimension(N_y), intent(in) :: Y_c
+    use m_type
+    implicit none
 
-    Real, dimension(N_x+1,N_y), intent(out) :: U
-    Real, dimension(N_x,N_y+1), intent(out) :: V
+    type(phys), intent(in) :: data_phys
+    type(num), intent(in) :: data_num
 
-    Integer :: i, j   ! Attention, mettre au centre des faces
-    do i=1,N_x+1
-        do j=1,N_y
-            U(i,j)=alpha*sin(acos(-1.)*X_n(i)/L-(acos(-1.)*beta/2))*cos(acos(-1.)*Y_c(j)/L-(acos(-1.)*beta/2))
+    real, dimension(data_num%N_y+1), intent(in) :: Y_reg
+
+    real, dimension(data_num%N_y+1), intent(out) :: Y_irreg
+
+    integer :: i
+    real :: pi
+
+    pi = acos(-1.)      ! valeur de pi pour améliorer la lisibilité
+
+    do i = 1, data_num%N_y+1
+        Y_irreg(i) = Y_reg(i) + data_num%gamma*data_phys%L*sin((2*pi*Y_reg(i))/data_phys%L)/(3*pi)
+    end do
+
+end subroutine Maillage_noeud_irregulier
+
+! Création des coordonénes des centres des cellules -> Coordonnées des centres 
+! X_C et Y_C : coordonnées des centres
+
+subroutine Maillage_centre(X_C, Y_C, X_N, Y_N, data_num)
+
+    use m_type
+    implicit none
+
+    type(num), intent(in) :: data_num
+    real, dimension(data_num%N_x+1), intent(in) :: X_N
+    real, dimension(data_num%N_y+1), intent(in) :: Y_N
+
+    real, dimension(data_num%N_x), intent(out) :: X_C
+    real, dimension(data_num%N_y), intent(out) :: Y_C
+
+    integer :: i
+
+    ! Calcul des abcisses des centres des cellules
+    do i = 1, data_num%N_x
+        X_C(i) = (X_N(i) + X_N(i+1))/2
+    end do
+
+    ! Calcul des ordonnées des centres des cellules
+    do i = 1, data_num%N_y
+        Y_C(i) = (Y_N(i) + Y_N(i+1))/2
+    end do
+
+end subroutine Maillage_centre
+
+!-----------------------------------------Calculs des Deltas---------------------------------------------!
+
+! Calcul des grands delta ente les noueds -> Delta_X et Delta_Y
+! Delta_X : Delta entre les noeuds en x
+! Delta_Y : Delta entre les noeuds en y
+
+subroutine Delta_noeuds(Delta_X, Delta_Y, X_N, Y_N, data_num)
+
+    use m_type
+    implicit none
+
+    type(num), intent(in) :: data_num
+
+    real, dimension(data_num%N_x+1), intent(in) :: X_N
+    real, dimension(data_num%N_y+1), intent(in) :: Y_N
+
+    real, dimension(data_num%N_x), intent(out) :: Delta_X
+    real, dimension(data_num%N_y), intent(out) :: Delta_Y
+
+    integer :: i
+
+    ! Calcul des Delta_X
+    do i = 1, data_num%N_x
+        Delta_X(i) = X_N(i+1) - X_N(i)
+    end do
+
+    ! Calcul des Delta_Y
+    do i = 1, data_num%N_y
+        Delta_Y(i) = Y_N(i+1) - Y_N(i)
+    end do
+
+end subroutine Delta_noeuds
+
+! Calcul des petits delta entre les centres des cellules -> dx, dy
+! dx : Delta entre les centres des cellules en x
+! dy : Delta entre les centres des cellules en y
+
+subroutine Delta_centres(dx, dy, X_C, Y_C, data_num)
+
+    use m_type
+    implicit none
+
+    type(num), intent(in) :: data_num
+
+    real, dimension(data_num%N_x), intent(in) :: X_C
+    real, dimension(data_num%N_y), intent(in) :: Y_C
+
+    real, dimension(data_num%N_x-1), intent(out) :: dx
+    real, dimension(data_num%N_y-1), intent(out) :: dy
+
+    integer :: i
+
+    ! Calcul des dx
+    do i = 1, data_num%N_x-1
+        dx(i) = X_C(i+1) - X_C(i)
+    end do
+
+    ! Calcul des dy
+    do i = 1, data_num%N_y-1
+        dy(i) = Y_C(i+1) - Y_C(i)
+    end do
+
+end subroutine Delta_centres
+
+!-------------------------------------------VTSWriter----------------------------------------------------!
+! Création des tableaux pour la subroutine VTSWriter 
+
+subroutine Tab_noeuds(Tab_X_N, Tab_Y_N, X_N, Y_N, data_num)
+
+    use m_type
+    implicit none
+
+    type(num), intent(in) :: data_num
+    real, dimension(data_num%N_x+1), intent(in) :: X_N
+    real, dimension(data_num%N_y+1), intent(in) :: Y_N
+
+    real, dimension(data_num%N_x+1, data_num%N_y+1), intent(out) :: Tab_X_N
+    real, dimension(data_num%N_x+1, data_num%N_y+1), intent(out) :: Tab_Y_N
+
+    integer :: i, j
+
+    do j = 1, data_num%N_y+1
+        do i = 1, data_num%N_x+1
+            Tab_X_N(i,j) = X_N(i)
+            !write(*,*) "i = ", i, "j = ", j, "X_N(i) = ", X_N(i)
+        end do
+    end do
+    !write(*,*) "Tab_X_N = ", Tab_X_N
+
+    do i = 1, data_num%N_x+1
+        do j = 1, data_num%N_y+1
+            Tab_Y_N(i,j) = Y_N(j)
         end do
     end do
 
-    do i=1,N_x
-        do j=1,N_y+1
-            V(i,j)=-alpha*cos(acos(-1.)*(X_c(i)/L)-(acos(-1.)*beta/2))*sin(acos(-1.)*Y_n(j)/L-(acos(-1.)*beta/2))
+end subroutine Tab_noeuds
+
+!------------------------------------CALCULS VITESSE / TEMPS-------------------------------------------!
+
+! Champs de vitesse -> U et V
+! U : champ de vitesse en x
+! V : champ de vitesse en y
+
+subroutine Calculs_vitesse(U, V, X_C, Y_C, X_N, Y_N,data_phys, data_num)
+
+    use m_type
+    implicit none
+
+    type(phys), intent(in) :: data_phys
+    type(num), intent(in) :: data_num
+
+    real, dimension(data_num%N_x), intent(in) :: X_C
+    real, dimension(data_num%N_y), intent(in) :: Y_C
+
+    real, dimension(data_num%N_x+1), intent(in) :: X_N
+    real, dimension(data_num%N_y+1), intent(in) :: Y_N
+
+    real, dimension(data_num%N_x+1, data_num%N_y), intent(out) :: U
+    real, dimension(data_num%N_x, data_num%N_y+1), intent(out) :: V
+
+    integer :: i, j
+    real :: pi
+
+    pi = acos(-1.)      ! valeur de pi pour améliorer la lisibilité
+
+    ! Calcul du champ de vitesse en x (sur le noeud selon x et le centre selon y)
+    do i = 1, data_num%N_x+1
+        do j = 1, data_num%N_y
+            U(i,j) = data_phys%alpha * sin((pi*X_N(i)/data_phys%L)-(data_phys%beta*pi/2)) *&
+                     cos((pi*Y_C(j)/data_phys%L)-(data_phys%beta*pi/2))
         end do
     end do
-    
-end subroutine Vitesse
 
-! Calcul du pas de temps
+    ! Calcul du champ de vitesse en y (sur le noeud selon y et le centre selon x)
+    do i = 1, data_num%N_x
+        do j = 1, data_num%N_y+1
+            V(i,j) = - data_phys%alpha * cos((pi*X_C(i)/data_phys%L)-(data_phys%beta*pi/2)) *&
+                     sin((pi*Y_N(j)/data_phys%L)-(data_phys%beta*pi/2))
+        end do
+    end do
 
-subroutine delta_t(dt ,D, R, CFL, U, V, N_x,N_y, Tf, Delta_x, Delta_y)
-    Implicit None
+end subroutine Calculs_vitesse
 
-    Real, intent(in) :: D, R, CFL, Tf
-    Integer, intent(in) :: N_x, N_y
-    Real, dimension(N_x+1,N_y), intent(out) :: U
-    Real, dimension(N_x,N_y+1), intent(out) :: V
-    Real, dimension(N_x), intent(in) :: Delta_x
-    Real, dimension(N_y), intent(in) :: Delta_y
+
+! Calculs relatifs au temps -> dt et N_t
+! dt : pas de temps
+! N_t : nombre de pas de temps
+
+subroutine Calculs_temps(N_t, dt, U, V, delta_X, delta_Y, data_phys, data_num)
+
+    use m_type
+    implicit none
+
+    type(phys), intent(in) :: data_phys
+    type(num), intent(in) :: data_num
+
+    real, dimension(data_num%N_x+1, data_num%N_y), intent(in) :: U
+    real, dimension(data_num%N_x, data_num%N_y+1), intent(in) :: V
+
+    real, dimension(data_num%N_x), intent(in) :: delta_X
+    real, dimension(data_num%N_y), intent(in) :: delta_Y
 
     real, intent(out) :: dt
+    integer, intent(out) :: N_t
 
-    Real :: u_int, v_int, delta_int
-    integer :: i, j
+    integer :: i,j
+    real :: u_int, v_int, dt_int
 
-    dt = Tf
+    ! Calcul du pas de temps
+    dt = data_phys%Tf
+    
+    do i = 1,data_num%N_x
+        do j = 1,data_num%N_y
+            u_int = abs(U(i,j)+U(i+1,j))/2
+            v_int = abs(V(i,j)+V(i,j+1))/2
 
-    do i=1,N_x
-        do j = 1,N_y                              
-            u_int = abs((U(i,j)+U(i+1,j))/2)          ! Vitesse au centre des faces
-            v_int = abs((V(i,j)+V(i,j+1))/2)
-            delta_int=1/((u_int/(CFL*Delta_x(i)))+(v_int/(CFL*Delta_y(j)))+(D/(R*Delta_x(i)**2))+(D/(R*Delta_y(j)**2)))
+            dt_int = 1/((u_int/(data_num%CFL*delta_X(i))) +&
+                        (v_int/(data_num%CFL*delta_Y(j))) +&
+                        (data_phys%D/(data_num%R*delta_X(i)*delta_X(i))) +&
+                        (data_phys%D/(data_num%R*delta_Y(j)*delta_Y(j)))  &
+                    )
 
-            if (delta_int < dt) then                  ! On cherche le minimum
-                dt = delta_int
+            if (dt_int < dt) then
+                dt = dt_int
             end if
-
         end do
     end do
 
-    ! Messages d'avertissement mis en raison d'erreurs rencontrées au début du projet
-    if (dt > Tf) then
-        write(*,*) "Pas de temps trop grand"
-    end if
+    ! Calcul du nombre de pas de temps
+    N_t = 0
 
-    if (dt < 0.0001) then
-        write(*,*) "Pas de temps trop petit"
-    end if
+    do while (dt*N_t < data_phys%Tf)
+        N_t = N_t + 1
+    end do
 
-    write(*,*) "Pas de temps : ", dt
-end subroutine delta_t
+end subroutine Calculs_temps
 
-! Définition de la matrice de concentration initiale
+!------------------------------------CALCULS CONCENTRATION-------------------------------------------!
 
-subroutine C_initiale(C0,C1,C_init, N_x, N_y)
-    Implicit none
+! Calcul de la concentration initiale au centre des cellules -> C0
+! C0 : concentration initiale
 
-    Integer, intent(in) :: N_x, N_y
-    Real, intent(in) :: C0,C1
-    Real, dimension(N_x,N_y), intent(out) :: C_init
-    
+subroutine C_initiale(C_init, data_phys, data_num)
+
+    use m_type
+    implicit none
+
+    type(phys), intent(in) :: data_phys
+    type(num), intent(in) :: data_num
+
+    real, dimension(data_num%N_x, data_num%N_y), intent(out) :: C_init
+
     integer :: i, j
 
-    do i = 1, N_x 
-        do j = 1, N_y
-            C_init(i,j) = C0
+    ! Calcul de la concentration initiale
+    do i = 1, data_num%N_x
+        do j = 1, data_num%N_y
+            C_init(i,j) = data_phys%C0
         end do
     end do
 
@@ -257,33 +347,38 @@ end subroutine C_initiale
 
 ! Calcul des flux advectifs
 
-subroutine F_adv(U, V, C, F_as, F_ao, F_an, F_ae, N_x, N_y, Delta_x, Delta_y, C1, C0, beta)
-    Implicit None
+subroutine F_adv(U, V, C, F_as, F_ao, F_an, F_ae, Delta_x, Delta_y, data_phys, data_num)
+    
+    use m_type
+    implicit none
 
-    Integer, intent(in) :: N_x, N_y, beta
-    real, intent(in) :: C1, C0
-    Real, dimension(N_x+1,N_y), intent(in) :: U
-    Real, dimension(N_x,N_y+1), intent(in) :: V
-    real, dimension(N_x,N_y), intent(in) :: C
-    real, dimension(N_x), intent(in) :: Delta_x
-    real, dimension(N_y), intent(in) :: Delta_y
+    type(phys), intent(in) :: data_phys
+    type(num), intent(in) :: data_num
 
-    Real, dimension(N_x,N_y), intent(out) :: F_as, F_ao, F_an, F_ae
+    Real, dimension(data_num%N_x+1,data_num%N_y), intent(in) :: U
+    Real, dimension(data_num%N_x,data_num%N_y+1), intent(in) :: V
+
+    real, dimension(data_num%N_x,data_num%N_y), intent(in) :: C
+
+    real, dimension(data_num%N_x), intent(in) :: Delta_x
+    real, dimension(data_num%N_y), intent(in) :: Delta_y
+
+    Real, dimension(data_num%N_x,data_num%N_y), intent(out) :: F_as, F_ao, F_an, F_ae
 
     Integer :: is, js, io, jo, in, jn, ie, je
 
     ! Calcul du flux advectif sud
 
-    do is=1, N_x                        ! Condition limite
+    do is=1, data_num%N_x                        ! Condition limite
         if (V(is,1) > 0) then
-            F_as(is,1) = -V(is,1)*C1*Delta_x(is)
+            F_as(is,1) = -V(is,1)*data_phys%C1*Delta_x(is)
         else
             F_as(is,1) = -V(is,1)*C(is,1)*Delta_x(is)
         end if
     end do
 
-    do is=1, N_x                         ! Cas général
-        do js=2, N_y
+    do is=1, data_num%N_x                         ! Cas général
+        do js=2, data_num%N_y
             if (V(is,js) > 0) then
                 F_as(is,js) = -V(is,js)*C(is,js-1)*Delta_x(is)
             else
@@ -293,12 +388,12 @@ subroutine F_adv(U, V, C, F_as, F_ao, F_an, F_ae, N_x, N_y, Delta_x, Delta_y, C1
     end do
     
     ! Calcul du flux advectif ouest
-    if (beta == 0) then 
-        do jo =1,N_y
+    if (data_phys%beta == 0) then 
+        do jo =1,data_num%N_y
             F_ao(1,jo) = 0.0                                ! Condition limite
         end do
     else 
-        do jo=1, N_y
+        do jo=1, data_num%N_y
             if (U(1,jo)<0) then
                 F_ao(1,jo) = -U(1,jo)*C(1,jo)*Delta_y(jo)
             else
@@ -307,8 +402,8 @@ subroutine F_adv(U, V, C, F_as, F_ao, F_an, F_ae, N_x, N_y, Delta_x, Delta_y, C1
         end do      
     end if
 
-    do io=2, N_x            
-        do jo=1, N_y
+    do io=2, data_num%N_x            
+        do jo=1, data_num%N_y
             if (U(io,jo) > 0) then
                 F_ao(io,jo) = -U(io,jo)*C(io-1,jo)*Delta_y(jo)
             else
@@ -319,16 +414,16 @@ subroutine F_adv(U, V, C, F_as, F_ao, F_an, F_ae, N_x, N_y, Delta_x, Delta_y, C1
 
     ! Calcul du flux advectif nord
     
-    do in=1, N_x    ! Condition limite
-        if (V(in,N_y+1) > 0) then
-            F_an(in,N_y) = V(in,N_y+1)*C(in,N_y)*Delta_x(in)
+    do in=1, data_num%N_x    ! Condition limite
+        if (V(in,data_num%N_y+1) > 0) then
+            F_an(in,data_num%N_y) = V(in,data_num%N_y+1)*C(in,data_num%N_y)*Delta_x(in)
         else
-            F_an(in,N_y) = V(in,N_y+1)*C0*Delta_x(in)
+            F_an(in,data_num%N_y) = V(in,data_num%N_y+1)*data_phys%C0*Delta_x(in)
         end if
     end do
 
-    do in=1, N_x   ! Cas général
-        do jn=1, N_y-1
+    do in=1, data_num%N_x   ! Cas général
+        do jn=1, data_num%N_y-1
             if (V(in,jn+1) > 0) then
                 F_an(in,jn) = V(in,jn+1)*C(in,jn)*Delta_x(in)
             else
@@ -339,24 +434,24 @@ subroutine F_adv(U, V, C, F_as, F_ao, F_an, F_ae, N_x, N_y, Delta_x, Delta_y, C1
     
     ! Calcul du flux advectif est
     
-    if (beta == 0) then
-        do je = 1,N_y
-            F_ae(N_x,je) = 0.0                          ! Condition limite
+    if (data_phys%beta == 0) then
+        do je = 1,data_num%N_y
+            F_ae(data_num%N_x,je) = 0.0                          ! Condition limite
         end do
     ! else                                                 ! Commenté le temps des tests en I
-    !     do je=1, N_y
-    !         if (U(N_x+1,je)>0) then
-    !             F_ae(N_x,je) = U(N_x+1,je)*C(N_x,je)*Delta_y(je)  
+    !     do je=1, data_num%N_y
+    !         if (U(data_num%N_x+1,je)>0) then
+    !             F_ae(data_num%N_x,je) = U(data_num%N_x+1,je)*C(data_num%N_x,je)*Delta_y(je)  
     !         else
-    !             F_ae(N_x,je)=0.0
+    !             F_ae(data_num%N_x,je)=0.0
     !         end if
     !     end do
     end if
         
     
 
-    do ie=1, N_x-1            
-        do je=1, N_y
+    do ie=1, data_num%N_x-1            
+        do je=1, data_num%N_y
             if (U(ie,je) > 0) then
                 F_ae(ie,je) = U(ie+1,je)*C(ie,je)*Delta_y(je)
             else
@@ -465,16 +560,11 @@ subroutine C_new(C_next, C_old, F_as, F_ao, F_an, F_ae, F_ds, F_do, F_dn, F_de, 
 
     do i=1, N_x
         do j=1, N_y
-            C_next(i,j) = C_old(i,j) - dt*(F_as(i,j) + F_ao(i,j) + F_an(i,j) + F_ae(i,j)& 
-            !- F_ds(i,j) - F_do(i,j) - F_dn(i,j) - F_de(i,j)
+            C_next(i,j) = C_old(i,j) - dt*(&
+            !F_as(i,j) + F_ao(i,j) + F_an(i,j) + F_ae(i,j) & 
+            - F_ds(i,j) - F_do(i,j) - F_dn(i,j) - F_de(i,j) &
             )/(Delta_x(i)*Delta_y(j))
-
-            !C_next(i,j) = C_old(i,j) + dt*(F_ds(i,j) + F_de(i,j) + F_do(i,j) + F_dn(i,j) & 
-            !)/(Delta_x(i)*Delta_y(j)) !                                                            ! Calul avec seulement la diffusion
         end do
     end do
-    print*, C_old(1,2), C_next(1,2), F_ae(1,2),F_ao(1,2),F_an(1,2),F_as(1,2), dt, Delta_x(1), Delta_y(2),(Delta_x(1)*Delta_y(2))
-    print*, dt*(F_as(1,2) + F_ao(1,2) + F_an(1,2) + F_ae(1,2))/(Delta_x(1)*Delta_y(2))
-    print*, F_as(1,2) + F_ao(1,2) + F_an(1,2) + F_ae(1,2)
-    print*, dt/(Delta_x(1)*Delta_y(2))
+
 end subroutine C_new
