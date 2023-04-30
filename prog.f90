@@ -7,7 +7,7 @@ program BE
     type (num):: data_num
 
     integer :: N_t, i_temps, i
-    real :: dt
+    real :: dt, P, C_moy
 
     real, dimension(:), allocatable :: X_Nreg, Y_Nreg, Y_Nirreg, X_C, Y_C, delta_X, delta_Y, dx, dy, &
                                         C_ax, C_ay
@@ -38,6 +38,8 @@ program BE
     allocate(Y_C(data_num%N_y))
 
     call Maillage_centre(X_C, Y_C, X_Nreg, Y_Nirreg, data_num)
+    !write(*,*) "X_C", X_C
+    !write(*,*) "Y_C", Y_C
 
     ! Calcul des deltas
         ! Calcul des grands deltas (entre les noeuds)
@@ -60,12 +62,18 @@ program BE
     allocate(U(data_num%N_x+1,data_num%N_y))
     allocate(V(data_num%N_x,data_num%N_y+1))
 
-    call Calculs_vitesse(U, V, X_C, Y_C, X_Nreg, Y_Nirreg, data_phys, data_num)
+    call Calculs_vitesse(U, V, X_C, Y_C, X_Nreg, Y_Nirreg, data_phys, data_num)          ! Calcul
+    !call Calculs_vitesse_verifA(U, V, X_C, Y_C, X_Nreg, Y_Nirreg, data_phys, data_num)  ! Test
 
     !---------- Calcul du temps ---------!
     call Calculs_temps(N_t, dt, U, V, delta_X, delta_Y, data_phys, data_num)
     write(*,*) "N_t", N_t
     write(*,*) "dt", dt
+    write(*,*) "Tf", N_t*dt
+
+    !--------- Nombre de Péclet ---------!
+    P = data_phys%alpha*data_phys%L/data_phys%D 
+    write(*,*) "P", P
 
     !------- Préparation VTSWriter ------!
     allocate(Tab_X_N(data_num%N_x+1,data_num%N_y+1))
@@ -81,7 +89,8 @@ program BE
 
         allocate(C_init(data_num%N_x,data_num%N_y))
 
-        call C_initiale(C_init, data_phys, data_num)
+        call C_initiale(C_init, data_phys, data_num)              ! Calcul 
+        !call C_init_verifA(C_init, data_phys, data_num)          ! Test 
         !write(*,*) "C_init", C_init
 
         call VTSWriter(0,0,data_num%N_x+1,data_num%N_y+1,Tab_X_N,Tab_Y_N,C_init,U,V,'ini')
@@ -89,6 +98,37 @@ program BE
         ! Création du fichier d'analyse
 
         open(1,file='sol_analyse.csv',status='replace')
+        
+            ! Ecriture des données initiales
+            allocate(C_ax(data_num%N_x))
+            allocate(C_ay(data_num%N_y))
+        
+            call C_analytique(X_C, Y_C, C_ax, C_ay, 0, dt, data_phys, data_num)
+
+            write(1,*) 0
+
+            do i = 1, data_num%N_x
+                write(1,*) C_ax(i)
+            end do
+
+            do i = 1, data_num%N_x
+                write(1,*) C_init(i,data_num%N_y/2)
+            end do
+
+            do i = 1, data_num%N_y
+                write(1,*) C_ay(i)
+            end do
+
+            do i = 1, data_num%N_y
+                write(1,*) C_init(data_num%N_x/2,i)
+            end do
+
+            deallocate(C_ax)
+            deallocate(C_ay)
+    
+            ! Concentration moyenne
+            call C_moyen(C_moy, C_init, data_num)
+            write(1,*) C_moy            
 
         !---Calcul de la concentration---!
 
@@ -124,7 +164,7 @@ program BE
 
             ! Enregistrement des résultats tous les 100 pas de temps
 
-            if (mod(i_temps,100) == 0) then
+            if (mod(i_temps,10) == 0) then
                 !write(*,*) "i_temps", i_temps
                 ! Ecriture du fichier
                 call VTSWriter(i_temps*dt,i_temps,data_num%N_x+1,data_num%N_y+1,Tab_X_N,Tab_Y_N,C_next,U,V,'int')
@@ -155,8 +195,15 @@ program BE
 
                 deallocate(C_ax)
                 deallocate(C_ay)
+            
+                ! Concentration moyenne
+                call C_moyen(C_moy, C_next, data_num)
+                write(1,*) C_moy          
+                !write(*,*) "C_moy", C_moy
+
             end if
             
+            ! Mise à jour de la concentration
             C_old = C_next
         end do        
         
