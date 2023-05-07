@@ -6,8 +6,8 @@ program BE
     type (phys):: data_phys
     type (num):: data_num
 
-    integer :: N_t, i_temps, i
-    real :: dt, P, C_moy
+    integer :: N_t, i_temps, i, sol_stationnaire
+    real :: dt, P, C_moy, C_moy_old, C_carac
 
     real, dimension(:), allocatable :: X_Nreg, Y_Nreg, Y_Nirreg, X_C, Y_C, delta_X, delta_Y, dx, dy, &
                                         C_ax, C_ay
@@ -93,6 +93,10 @@ program BE
         !call C_init_verifA(C_init, data_phys, data_num)          ! Test 
         !write(*,*) "C_init", C_init
 
+        C_carac = 0.5                                             ! Concentration moyenne finale
+        call C_moyen(C_moy_old, C_init, data_num)                 ! Concentration moyenne initiale
+        sol_stationnaire = 0                                      ! Booléen pour la boucle while
+
         call VTSWriter(0,0,data_num%N_x+1,data_num%N_y+1,Tab_X_N,Tab_Y_N,C_init,U,V,'ini')
 
         ! Création du fichier d'analyse
@@ -164,7 +168,7 @@ program BE
 
             ! Enregistrement des résultats tous les 100 pas de temps
 
-            if (mod(i_temps,10) == 0) then
+            if (mod(i_temps,100) == 0) then
                 !write(*,*) "i_temps", i_temps
                 ! Ecriture du fichier
                 call VTSWriter(i_temps*dt,i_temps,data_num%N_x+1,data_num%N_y+1,Tab_X_N,Tab_Y_N,C_next,U,V,'int')
@@ -198,8 +202,18 @@ program BE
             
                 ! Concentration moyenne
                 call C_moyen(C_moy, C_next, data_num)
-                write(1,*) C_moy          
+                write(1,*) C_moy
                 !write(*,*) "C_moy", C_moy
+
+                ! On recherche la solution stationnaire
+                if (sol_stationnaire == 0) then
+                    if (abs(C_moy-C_moy_old)/C_carac < 0.01) then
+                        write(*,*) "Solution stationnaire atteinte"
+                        write(*,*) "t_statio =", dt*i_temps
+                        sol_stationnaire = 1
+                    end if
+                end if
+                C_moy_old = C_moy
 
             end if
             
