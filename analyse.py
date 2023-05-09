@@ -1,18 +1,25 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
-# Lire le fichier ligne par ligne
-with open('sol_analyse.csv', 'r') as f:
+###------------------------------------------------------------------------###
+###----------------------------- Initialisation ---------------------------###
+###------------------------------------------------------------------------###
+
+## Lire le fichier ligne par ligne
+with open('sol_analyse.csv', 'r') as f:        # fichier d'analyse produit par le code Fortran
     lines = f.readlines()
 
-# Données
-N = 20
+## Données
+N = 20                                         # A MODIFIER EN FONCTION DU NOMBRE DE MAILLES -> Nx = Ny = N
 L = 1
 
+###------------------------------------------------------------------------###
+###-------------- Lecture des données (ne pas modifier) -------------------###
+###------------------------------------------------------------------------###
 x = np.linspace(0, L, N)
 y = np.linspace(0, L, N)
 
-# Extraire les données
+## Extraire les données
 temps = []
 Cx_ana = []
 Cx_num = []
@@ -42,9 +49,15 @@ for i in range(0, len(lines), 4*N+2):
     C_moy.append(float(moy))
     #print("moy",moy)
 
-### Tracer les courbes ###
+###------------------------------------------------------------------------###
+### ------------------Tracer les courbes (analyse) ------------------------###
+###------------------------------------------------------------------------###
 
-# Validation du programme
+### Validation du programme
+
+## Concentration en fonction de y
+# k -> numéro de l'itération à tracer
+# Cette partie trace C(y,k*dt) en x=L/2
 
 plt.figure(1)
 k = 2
@@ -58,10 +71,13 @@ plt.ylim(0,1)
 plt.legend()
 plt.grid()
 
+## Concentration en fonction de y
+# k -> numéro de l'itération à tracer
+# Cette partie trace C(x,k*dt) en y=L/2
 
 plt.figure(2)
-plt.plot(x, Cx_ana[int(k*20):int((k+1)*20)], label="Cx_ana")
-plt.plot(x, Cx_num[int(k*20):int((k+1)*20)],'o',label="Cx_num")
+plt.plot(x, Cx_ana[int(k*N):int((k+1)*N)], label="Cx_ana")
+plt.plot(x, Cx_num[int(k*N):int((k+1)*N)],'o',label="Cx_num")
 plt.xlabel("x")
 plt.ylabel("C_x")
 plt.xlim(0,1)
@@ -69,13 +85,9 @@ plt.ylim(0,1)
 plt.legend()
 plt.grid()
 
-plt.figure(3)
-plt.plot(y, Cy_ana[0:20], label="Cy_ana")
-plt.plot(y, Cy_num[0:20], label="Cy_num", marker='o')
-plt.xlabel("y")
-plt.ylabel("Cy")
-plt.legend()
-plt.grid()
+
+## Concentration en fonction de y
+# On trace toutes les itérations (peu lisible)
 
 plt.figure(4)
 for k in range(len(temps)):
@@ -89,7 +101,12 @@ plt.ylabel("C_y")
 plt.grid()
 
 
-# Concentration moyenne
+## Concentration moyenne
+# On trace C_moy en fonction du temps  (des itérations)
+# Variables à modifier en fonction du cas :
+#   - val_x : valeur ou C_moy atteint 0.45
+#   - ligne 115 et 116 : valeur seuil et valeur x correspondante (pour affichage de la valeur sur la courbe)
+
 val_x = 11.3
 print(val_x)
 plt.figure(5)
@@ -107,7 +124,8 @@ plt.axvline(x=val_x, color='r', linestyle='--')
 plt.text(0.01, lim + 0.01, '0.45', color='r')
 plt.text(val_x, 0.01, '11.3', color='r')
 
-# Temps adimensionnels
+## Temps adimensionnels (Complété à la main)
+
 Pe = [0.5,5,50] 
 D = [0.2,0.02,0.002]
 alpha = [0.005,0.05,0.5]
@@ -129,6 +147,7 @@ plt.loglog()
 
 
 ### Print et enregistrement manuel des valeurs à un t fixe (20s) pour la convergence en maillage ###
+# Complété à la main
 
 print(Cy_num[-N:])
 
