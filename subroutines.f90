@@ -28,6 +28,7 @@ subroutine read_data (filename, data_phys, data_num)
 
     read (10, *) data_num%N_x
     read (10, *) data_num%N_y
+    read (10, *) data_num%N_save
     read (10, *) data_num%gamma
     read (10, *) data_num%R
     read (10, *) data_num%CFL

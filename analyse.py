@@ -60,7 +60,7 @@ for i in range(0, len(lines), 4*N+2):
 # Cette partie trace C(y,k*dt) en x=L/2
 
 plt.figure(1)
-k = 2
+k = 50
 print(Cx_num[int(k*N):int((k+1)*N)])
 plt.plot(y, Cy_ana[int(k*N):int((k+1)*N)], label="Cy_ana")
 plt.plot(y, Cy_num[int(k*N):int((k+1)*N)],'o',label="Cy_num")
@@ -76,6 +76,7 @@ plt.grid()
 # Cette partie trace C(x,k*dt) en y=L/2
 
 plt.figure(2)
+k=50
 plt.plot(x, Cx_ana[int(k*N):int((k+1)*N)], label="Cx_ana")
 plt.plot(x, Cx_num[int(k*N):int((k+1)*N)],'o',label="Cx_num")
 plt.xlabel("x")
@@ -138,7 +139,7 @@ tac = [tc[k]/(L/alpha[k]) for k in range(len(tc))]
 
 plt.figure(6)
 plt.plot(Pe, tad, label="temps caractéristique de diffusion")
-plt.plot(Pe, tac, label="temps caractéristique de convection")
+plt.plot(Pe, tac, label="temps caractéristique d'advection")
 plt.xlabel("Pe")
 plt.ylabel("temps adimensionnels")
 plt.legend()

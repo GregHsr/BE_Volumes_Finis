@@ -168,7 +168,7 @@ program BE
 
             ! Enregistrement des résultats tous les 100 pas de temps
 
-            if (mod(i_temps,100) == 0) then
+            if (mod(i_temps,data_num%N_save) == 0) then
                 !write(*,*) "i_temps", i_temps
                 ! Ecriture du fichier
                 call VTSWriter(i_temps*dt,i_temps,data_num%N_x+1,data_num%N_y+1,Tab_X_N,Tab_Y_N,C_next,U,V,'int')

@@ -7,7 +7,7 @@ module m_type
     end type phys
 
     type num
-        integer :: N_x, N_y, gamma
+        integer :: N_x, N_y, gamma, N_save
         real :: R, CFL
     end type num
 
