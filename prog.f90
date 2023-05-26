@@ -97,7 +97,7 @@ program BE
         call C_moyen(C_moy_old, C_init, data_num)                 ! Concentration moyenne initiale
         sol_stationnaire = 0                                      ! Booléen pour la boucle while
 
-        call VTSWriter(0,0,data_num%N_x+1,data_num%N_y+1,Tab_X_N,Tab_Y_N,C_init,U,V,'ini')
+        call VTSWriter(0.,0,data_num%N_x+1,data_num%N_y+1,Tab_X_N,Tab_Y_N,C_init,U,V,'ini')
 
         ! Création du fichier d'analyse
 
